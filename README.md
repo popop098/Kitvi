@@ -37,9 +37,11 @@ GPU가 여러 개면 선택할 수 있으며 누락된 값은 `—`로 표시합
 
 색상·배경·로컬 글꼴, 카드 순서·표시·열 수를 테마 플러그인으로 바꿀 수 있습니다. 설치·활성화한 뒤 **설정 → 앱 테마**에서 미리보기·적용·취소·기본값 복원을 선택하세요. 헤더의 기본 테마 버튼으로도 복원할 수 있습니다.
 
-- [Cozy Desk 설치 ZIP](sdk/packages/Cozy-Desk-1.0.0.kitvi-plugin.zip): 따뜻한 표면·두 열 배치·원본 합성 오디오 예제
-- [Midnight Grid 설치 ZIP](sdk/packages/Midnight-Grid-1.0.0.kitvi-plugin.zip): 다른 색상·세 열 배치·공식 YouTube 플레이어 예제
+- [Cozy Desk](https://github.com/popop098/kitvi-theme-cozy-desk): 따뜻한 표면·두 열 배치·원본 합성 오디오 테마
+- [Midnight Grid](https://github.com/popop098/kitvi-theme-midnight-grid): 다른 색상·세 열 배치·공식 YouTube 플레이어 테마
 - [테마 제작 가이드](docs/theme-sdk.md): SDK2 매니페스트, JSON 규격, 타입·bridge와 패키징. 기존 SDK1 도구는 계속 지원합니다.
+
+두 테마는 별도 저장소와 안정 릴리스로 배포합니다. **플러그인 → GitHub 저장소**에 `popop098/kitvi-theme-cozy-desk` 또는 `popop098/kitvi-theme-midnight-grid`를 입력하면 최신 안정 릴리스를 가져옵니다. 각 저장소의 Releases에서 `.kitvi-plugin.zip`을 받아 **ZIP 파일 선택**으로 설치할 수도 있습니다.
 
 음악은 직접 재생 버튼을 눌렀을 때만 시작합니다. 패키지 오디오는 페이지 이동·최소화 중에도 재생할 수 있습니다. YouTube는 보이는 공식 플레이어로 재생하며, 숨김·잘림·최소화 시 일시정지합니다. 테마/플러그인 기능을 끄면 음악을 중지하고 기본 화면으로 복귀하며, 다시 켜거나 앱을 재시작해도 음악을 자동 재개하지 않습니다. 예제 영상별 외부 재생 허용과 인터넷 연결이 필요합니다.
 
@@ -80,6 +82,7 @@ npm start
 | `npm start` | 전체 빌드 후 실제 PC 대시보드 실행 |
 | `npm run design:preview` / `npm run design:dev` | 수집기를 시작하지 않는 디자인 작업실 / UI 변경 감시 |
 | `npm run package` | NSIS 설치형·포터블 ZIP·업데이트 메타데이터 생성, 자동 게시 없음 |
+| `npm run package:theme -- <테마 폴더> <출력 ZIP>` | 별도 테마 소스를 검증하고 `.kitvi-plugin.zip` 생성 |
 
 Electron 실행부는 `electron/`, React 화면은 `renderer/`, 공통 계약은 `shared/`, .NET 수집기는 `native/`, 빌드 스크립트는 `scripts/`에 있습니다. 생성 결과는 `build/`, `native/publish/`, `release/`에 저장됩니다.
 

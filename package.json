@@ -24,7 +24,7 @@
     "test:native": "node scripts/native.mjs checks",
     "start": "npm run build && node scripts/launch.mjs",
     "package": "npm run build && electron-builder --win nsis zip --x64 --publish never",
-    "package:themes": "node scripts/package-themes.mjs"
+    "package:theme": "node sdk/tools/package-theme.mjs"
   },
   "devDependencies": {
     "@astryxdesign/core": "0.7.14",

@@ -4,17 +4,19 @@ Kitvi 0.7.0은 색상·배경·글꼴, PC 상태 카드 배치와 BGM 위젯을 
 
 ## 바로 시작하기
 
-1. [Cozy Desk](../sdk/examples/cozy-desk)의 `kitvi-plugin.json`, `theme.json`, `assets/`를 새 폴더에 복사합니다. [Midnight Grid](../sdk/examples/midnight-grid)는 YouTube 위젯과 다른 배치를 보여 줍니다.
+1. 별도 플러그인 저장소인 [Cozy Desk](https://github.com/popop098/kitvi-theme-cozy-desk)의 `kitvi-plugin.json`, `theme.json`, `assets/`를 새 폴더에 복사합니다. [Midnight Grid](https://github.com/popop098/kitvi-theme-midnight-grid)는 YouTube 위젯과 다른 배치를 보여 줍니다. 소스와 자산의 라이선스·생성 안내는 각 테마 저장소에서 확인하세요.
 2. 매니페스트와 테마의 `id`를 같은 고유 ID로 바꾸고 `name`, `author`, 버전을 수정합니다. 문의 이메일 `authorEmail`은 선택 사항이며 제작자가 직접 기재한 정보입니다.
 3. 저장소 루트에서 패키징합니다.
 
 ```powershell
 npm ci --ignore-scripts --no-audit --no-fund
-node sdk/tools/package-theme.mjs sdk/examples/cozy-desk .cache/cozy-desk.kitvi-plugin.zip
-node sdk/tools/package-theme.mjs sdk/examples/midnight-grid .cache/midnight-grid.kitvi-plugin.zip
+git clone https://github.com/popop098/kitvi-theme-cozy-desk.git ../kitvi-theme-cozy-desk
+npm run package:theme -- ../kitvi-theme-cozy-desk .cache/cozy-desk.kitvi-plugin.zip
 ```
 
-Kitvi의 **플러그인 → ZIP 파일 선택 → 설치** 후 플러그인 사용을 켜고 배포자·권한에 동의해 활성화합니다. **설정 → 앱 테마**에서 미리보기·적용·취소·기본값 복원을 선택합니다. 음악은 직접 재생 버튼을 눌러 시작합니다. 테마만 설치하거나 적용해도 음악이 시작되지 않습니다.
+`npm run package:theme -- <테마 폴더> <출력.kitvi-plugin.zip>`은 임의의 테마 소스 폴더를 받습니다. `node sdk/tools/package-theme.mjs <테마 폴더> <출력.kitvi-plugin.zip>`으로 직접 실행할 수도 있습니다. 출력 파일은 소스 폴더 밖에 지정하세요.
+
+배포된 테마는 **플러그인 → GitHub 저장소**에 `popop098/kitvi-theme-cozy-desk` 또는 `popop098/kitvi-theme-midnight-grid`를 입력해 최신 안정 릴리스를 설치합니다. 각 테마 저장소의 Releases에서 `.kitvi-plugin.zip`을 받거나 직접 패키징한 ZIP은 **플러그인 → ZIP 파일 선택 → 설치**로 가져옵니다. 플러그인 사용을 켜고 배포자·권한에 동의해 활성화한 뒤 **설정 → 앱 테마**에서 미리보기·적용·취소·기본값 복원을 선택합니다. 음악은 직접 재생 버튼을 눌러 시작합니다. 테마만 설치하거나 적용해도 음악이 시작되지 않습니다.
 
 ## 패키지 계약
 
@@ -38,7 +40,7 @@ Kitvi의 **플러그인 → ZIP 파일 선택 → 설치** 후 플러그인 사�
 
 ## theme.json
 
-완전한 예시는 [Cozy Desk theme.json](../sdk/examples/cozy-desk/theme.json)에 있습니다. 스키마는 [`shared/theme-schema.ts`](../shared/theme-schema.ts), 타입은 [`sdk/types/themes.d.ts`](../sdk/types/themes.d.ts)를 기준으로 합니다.
+완전한 예시는 [Cozy Desk theme.json](https://github.com/popop098/kitvi-theme-cozy-desk/blob/main/theme.json)에 있습니다. 스키마는 [`shared/theme-schema.ts`](../shared/theme-schema.ts), 타입은 [`sdk/types/themes.d.ts`](../sdk/types/themes.d.ts)를 기준으로 합니다.
 
 | 항목 | 허용 범위 |
 | --- | --- |
@@ -70,7 +72,7 @@ Kitvi의 **플러그인 → ZIP 파일 선택 → 설치** 후 플러그인 사�
 }
 ```
 
-로컬 MP3/OGG/WAV/M4A는 페이지를 바꾸거나 창을 최소화해도 재생할 수 있습니다. 브라우저가 해당 코덱을 지원해야 합니다. 예제의 짧은 WAV는 검증용으로 직접 합성했으며 [`generate-example-assets.mjs`](../sdk/tools/generate-example-assets.mjs)로 재생성할 수 있습니다. 제3자 음악을 배포할 때 필요한 권리를 확보하세요.
+로컬 MP3/OGG/WAV/M4A는 페이지를 바꾸거나 창을 최소화해도 재생할 수 있습니다. 브라우저가 해당 코덱을 지원해야 합니다. Cozy Desk의 짧은 WAV는 직접 합성한 자산이며 생성 방법과 라이선스는 [테마 저장소](https://github.com/popop098/kitvi-theme-cozy-desk)에 있습니다. 제3자 음악을 배포할 때 필요한 권리를 확보하세요.
 
 YouTube는 화면에 보이는 **공식 동영상 플레이어**입니다. 화면에서 플레이어가 가려지거나 잘리거나 다른 페이지로 이동하거나 창을 최소화하면 일시정지합니다. 최소200×200이며 UI는 전체가 보이는 경우에만 재생을 시작합니다. 음원만 추출하거나 숨겨서 재생하는 기능은 제공하지 않습니다. 공식 플레이어의 브랜딩·광고·컨트롤을 가리지 마세요. [YouTube 정책 안내](https://developers.google.com/youtube/terms/developer-policies-guide), [플레이어 요구사항](https://developers.google.com/youtube/terms/required-minimum-functionality)
 
@@ -100,6 +102,8 @@ GitHub 안정 릴리스에 매니페스트 버전과 같은 태그, `.kitvi-plug
 
 ## English
 
-Kitvi0.7 adds declarative SDK2 theme packages while preserving SDK1 tools. Themes define semantic light/dark colors, packaged images/fonts, bounded geometry, dashboard section layout and optional BGM. Install, accept both consent gates, then preview/apply from Settings. Use the two examples and the packager above. No arbitrary host CSS/JavaScript or general network API is exposed.
+Kitvi0.7 adds declarative SDK2 theme packages while preserving SDK1 tools. Themes define semantic light/dark colors, packaged images/fonts, bounded geometry, dashboard section layout and optional BGM. [Cozy Desk](https://github.com/popop098/kitvi-theme-cozy-desk) and [Midnight Grid](https://github.com/popop098/kitvi-theme-midnight-grid) are separate plugin repositories with their own stable releases and asset licenses. In Plugins, enter `popop098/kitvi-theme-cozy-desk` or `popop098/kitvi-theme-midnight-grid` to install the latest stable release, or choose a ZIP downloaded from that repository's Releases. Accept both consent gates, then preview/apply from Settings.
+
+For authoring, clone a theme separately and use `npm run package:theme -- <theme-folder> <output.kitvi-plugin.zip>` from the Kitvi root. The underlying `node sdk/tools/package-theme.mjs` tool accepts any theme source folder; keep its output outside that folder. No arbitrary host CSS/JavaScript or general network API is exposed.
 
 Packaged audio may play in the background. YouTube uses a visible official player in an isolated temporary session and pauses when hidden/clipped, minimized or revoked. Playback never starts from theme activation/restart; plugins can request a track selection but trusted host controls start it. No audio extraction is used. API keys/search/account access are not part of this contract. See the linked official YouTube policies and the generated SDK types for the precise interface.

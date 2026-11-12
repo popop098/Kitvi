@@ -31,7 +31,9 @@ Windows 11 x64 has been used for primary validation. Windows 10 22H2 x64 is a co
 
 SDK2 themes customize light/dark colors, packaged backgrounds/fonts, dashboard card order/visibility/columns and BGM. SDK1 tools remain supported. Install and accept a theme, then preview/apply/cancel/reset in Settings. The header always retains a default-theme recovery action.
 
-Try [Cozy Desk](sdk/packages/Cozy-Desk-1.0.0.kitvi-plugin.zip) for local audio or [Midnight Grid](sdk/packages/Midnight-Grid-1.0.0.kitvi-plugin.zip) for an official YouTube player. [Authoring guide](docs/theme-sdk.md) includes the schema, reusable SDK types and packaging commands. Audio never starts on theme activation or restart. Packaged audio may play in the background; YouTube requires its visible official player and pauses when hidden, clipped or minimized. Disabling the theme/plugin system stops playback and restores defaults.
+Try [Cozy Desk](https://github.com/popop098/kitvi-theme-cozy-desk) for local audio or [Midnight Grid](https://github.com/popop098/kitvi-theme-midnight-grid) for an official YouTube player. Each theme has its own repository and stable releases. In **Plugins → GitHub repository**, enter `popop098/kitvi-theme-cozy-desk` or `popop098/kitvi-theme-midnight-grid` to install its latest stable release. You can also download a `.kitvi-plugin.zip` from that repository's Releases and choose the local ZIP in Plugins.
+
+The [authoring guide](docs/theme-sdk.md) includes the schema, reusable SDK types and packaging commands. Audio never starts on theme activation or restart. Packaged audio may play in the background; YouTube requires its visible official player and pauses when hidden, clipped or minimized. Disabling the theme/plugin system stops playback and restores defaults.
 
 ## Plugins
 
@@ -70,6 +72,7 @@ npm start
 | `npm start` | Build and launch the real PC dashboard |
 | `npm run design:preview` / `npm run design:dev` | Collector-free design preview / watch UI changes |
 | `npm run package` | Generate NSIS installer, portable ZIP and update metadata without publishing |
+| `npm run package:theme -- <theme-folder> <output-ZIP>` | Validate separate theme sources and generate a `.kitvi-plugin.zip` |
 
 `electron/` contains the host, `renderer/` the React UI, `shared/` shared contracts, `native/` the .NET collector, and `scripts/` build tools. Generated output goes to `build/`, `native/publish/` and `release/`.
 
