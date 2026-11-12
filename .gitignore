@@ -1,0 +1,14 @@
+# Public distribution repository: keep application source and build outputs private.
+*
+!.gitignore
+!README.md
+!README.en.md
+!THIRD_PARTY_NOTICES.md
+!release-notes-v0.3.0.md
+!assets/
+!assets/kitvi-mascot.png
+!assets/kitvi-icon.png
+!assets/kitvi.ico
+!assets/kitvi-dashboard.png
+!docs/
+!docs/description.txt

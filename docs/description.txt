@@ -1,0 +1,1 @@
+Kitvi(킷비) — 내 PC의 지금을 한눈에 보는 Windows 오프라인 대시보드. CPU·RAM·GPU 실시간 그래프와 하드웨어·저장공간·장치 정보. / An offline Windows PC dashboard for live usage, hardware, storage, and devices.
