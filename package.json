@@ -1,7 +1,7 @@
 {
   "name": "kitvi",
   "productName": "Kitvi",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Kitvi — a Windows PC dashboard with sandboxed community plugins",
   "author": "Kitvi",
   "private": true,
@@ -23,7 +23,8 @@
     "test": "node --test tests/*.test.mjs",
     "test:native": "node scripts/native.mjs checks",
     "start": "npm run build && node scripts/launch.mjs",
-    "package": "npm run build && electron-builder --win nsis zip --x64 --publish never"
+    "package": "npm run build && electron-builder --win nsis zip --x64 --publish never",
+    "package:themes": "node scripts/package-themes.mjs"
   },
   "devDependencies": {
     "@astryxdesign/core": "0.7.14",

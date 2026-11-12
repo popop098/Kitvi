@@ -1,10 +1,10 @@
 <p align="center"><img src="assets/branding/mascot-fox-v1.png" width="200" alt="Kitvi SD 여우 마스코트"></p>
 <h1 align="center">Kitvi · 킷비</h1>
 <p align="center">내 PC의 지금을, 한눈에. 필요한 기능은 플러그인으로.</p>
-<p align="center"><img src="https://img.shields.io/badge/Windows-x64-0078D4?style=flat-square" alt="Windows x64"> <img src="https://img.shields.io/badge/v0.6.0-Preview-E8A44C?style=flat-square" alt="0.6.0 Preview"></p>
+<p align="center"><img src="https://img.shields.io/badge/Windows-x64-0078D4?style=flat-square" alt="Windows x64"> <img src="https://img.shields.io/badge/v0.7.0-Preview-E8A44C?style=flat-square" alt="0.6.0 Preview"></p>
 <p align="center"><strong>한국어</strong> · <a href="README.en.md">English</a><br><a href="https://github.com/popop098/Kitvi/releases">다운로드·릴리스</a> · <a href="docs/plugin-guide.md">플러그인 제작</a> · <a href="https://github.com/popop098/Kitvi/issues/new">문제 제보</a></p>
 
-Kitvi는 CPU·메모리·GPU와 Windows, 저장공간, 모니터, 장치를 확인하는 Windows용 PC 대시보드입니다. 앱 화면은 현재 한국어입니다. **0.6.0 Preview**는 커뮤니티 플러그인을 기본으로 꺼 두고, 사용 전 경고와 플러그인별 제작자·연락처·출처·권한 확인을 제공합니다.
+Kitvi는 CPU·메모리·GPU와 Windows, 저장공간, 모니터, 장치를 확인하는 Windows용 PC 대시보드입니다. 앱 화면은 현재 한국어입니다. **0.7.0 Preview**는 커스텀 테마와 BGM 위젯을 지원하며, 사용 전 경고와 플러그인별 제작자·연락처·출처·권한 확인을 유지합니다.
 
 이 저장소에서 Kitvi 소스, 빌드 방법, 릴리스와 이슈를 공개합니다. Kitvi가 작성한 소스 코드는 [MIT 라이선스](LICENSE)를 따릅니다. 브랜딩과 외부 구성 요소의 조건은 [브랜딩 안내](BRANDING.md)와 [제3자 고지](THIRD_PARTY_NOTICES.md)에 따로 정리했습니다.
 
@@ -32,6 +32,16 @@ Windows 11 x64에서 주요 동작을 검증해 왔습니다. Windows 10 22H2 x6
 | 화면 | Pretendard, 밝게·어둡게, 직접 제작한 창 헤더 |
 
 GPU가 여러 개면 선택할 수 있으며 누락된 값은 `—`로 표시합니다. GPU 사용률은 해당 어댑터의 가장 바쁜 엔진을 기준으로 집계합니다. 장치의 정상 표시는 Windows가 보고한 상태이며 Bluetooth 주변 기기의 실제 연결을 추정하지 않습니다.
+
+## 커스텀 테마와 BGM
+
+색상·배경·로컬 글꼴, 카드 순서·표시·열 수를 테마 플러그인으로 바꿀 수 있습니다. 설치·활성화한 뒤 **설정 → 앱 테마**에서 미리보기·적용·취소·기본값 복원을 선택하세요. 헤더의 기본 테마 버튼으로도 복원할 수 있습니다.
+
+- [Cozy Desk 설치 ZIP](sdk/packages/Cozy-Desk-1.0.0.kitvi-plugin.zip): 따뜻한 표면·두 열 배치·원본 합성 오디오 예제
+- [Midnight Grid 설치 ZIP](sdk/packages/Midnight-Grid-1.0.0.kitvi-plugin.zip): 다른 색상·세 열 배치·공식 YouTube 플레이어 예제
+- [테마 제작 가이드](docs/theme-sdk.md): SDK2 매니페스트, JSON 규격, 타입·bridge와 패키징. 기존 SDK1 도구는 계속 지원합니다.
+
+음악은 직접 재생 버튼을 눌렀을 때만 시작합니다. 패키지 오디오는 페이지 이동·최소화 중에도 재생할 수 있습니다. YouTube는 보이는 공식 플레이어로 재생하며, 숨김·잘림·최소화 시 일시정지합니다. 테마/플러그인 기능을 끄면 음악을 중지하고 기본 화면으로 복귀하며, 다시 켜거나 앱을 재시작해도 음악을 자동 재개하지 않습니다. 예제 영상별 외부 재생 허용과 인터넷 연결이 필요합니다.
 
 ## 플러그인
 

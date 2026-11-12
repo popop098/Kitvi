@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
-import { Activity, CircuitBoard, Cpu, Disc3, Info, Minus, Moon, RefreshCw, Square, Sun, X, Copy, Check, Puzzle, Settings } from 'lucide-react';
+import { Activity, CircuitBoard, Cpu, Disc3, Info, Minus, Moon, RefreshCw, RotateCcw, Square, Sun, X, Copy, Check, Puzzle, Settings } from 'lucide-react';
 import type { Appearance, DashboardState, MetricSample, WindowInfo } from '../shared/contracts.ts';
 import type { PluginUpdatesState, UpdateState } from '../shared/features.ts';
 import { formatBytes, formatUptime } from '../shared/format.ts';
@@ -12,6 +12,10 @@ import { MetricChart } from './MetricChart.tsx';
 import { DevicesPanel, DisplaysPanel, StoragePanel } from './InventoryPanels.tsx';
 import { AstryxProvider } from './design/AstryxProvider.tsx';
 import { PluginsPanel, SettingsPanel } from './FeaturePanels.tsx';
+import { ThemeRuntime, useThemeState } from './ThemeRuntime.tsx';
+import { BgmWidget, LocalThemeAudio, usePlaybackState } from './BgmWidget.tsx';
+import { dashboardLayout } from './theme-runtime.ts';
+import type { ThemeSectionId } from '../shared/themes.ts';
 import './features.css';
 
 function Brand() {
@@ -25,7 +29,7 @@ export function App() {
   const [state, setState] = useState<DashboardState>(starting);
   const [history, setHistory] = useState<MetricSample[]>([]);
   const [appearance, setAppearance] = useState<Appearance>(document.documentElement.dataset.appearance === 'dark' ? 'dark' : 'light');
-  const [windowInfo, setWindowInfo] = useState<WindowInfo>({ maximized: false, version: '0.5.0' });
+  const [windowInfo, setWindowInfo] = useState<WindowInfo>({ maximized: false, version: '0.7.0' });
   const [page, setPage] = useState<'pc'|'plugins'|'settings'>('pc');
   const [update, setUpdate] = useState<UpdateState | null>(null);
   const [pluginUpdates, setPluginUpdates] = useState<PluginUpdatesState | null>(null);
@@ -33,6 +37,9 @@ export function App() {
   const [now, setNow] = useState(Date.now());
   const [working, setWorking] = useState(false), [error, setError] = useState('');
   const api = window.kitvi;
+  const { theme, themeError } = useThemeState(api);
+  const { playback, playbackError } = usePlaybackState(api);
+  const layout = dashboardLayout(theme.active);
   useEffect(() => {
     if (!api) { setError('앱 연결을 준비하지 못했어요. Kitvi를 다시 실행해 주세요.'); return; }
     let active = true;
@@ -87,7 +94,29 @@ export function App() {
     {snapshot.gpus.map((item, index) => <option key={item.id} value={item.id}>GPU {index + 1} · {item.name}</option>)}
   </select> : undefined;
 
-  return <AstryxProvider appearance={appearance}><div className={`app-shell ${windowInfo.maximized ? 'maximized' : ''}`}>
+  const showThemeSettings = () => { setPage('settings'); requestAnimationFrame(() => document.getElementById('theme-settings-title')?.scrollIntoView({ behavior:'smooth',block:'start' })); };
+  const sections: Record<ThemeSectionId, React.ReactNode> = {
+    summary:<section aria-label="하드웨어 요약"><Card className="spec-grid" padding={0}>
+      <Spec icon={<Cpu size={18} aria-hidden="true" />} label="CPU" title={snapshot?.cpu.name || missing}><p>{snapshot?.cpu.cores != null ? `${snapshot.cpu.cores} 코어` : '코어 정보 없음'}<span className="text-separator">·</span>{snapshot?.cpu.threads != null ? `${snapshot.cpu.threads} 스레드` : '스레드 정보 없음'}</p></Spec>
+      <Spec icon={<Disc3 size={18} aria-hidden="true" />} label="GPU" title={gpu?.name || gpuMissing}><p>전용 메모리 {formatBytes(gpu?.dedicatedMemoryBytes)}</p><p className="driver-text">드라이버 {gpu?.driverVersion || '정보 없음'}</p>{gpu && ['stale', 'error'].includes(gpuFreshness) && <p className="warning-text">마지막으로 확인한 GPU 정보예요.</p>}</Spec>
+      <Spec icon={<CircuitBoard size={18} aria-hidden="true" />} label="메모리" title={formatBytes(snapshot?.memory.totalBytes)}><p>{formatBytes(snapshot?.memory.usedBytes)} 사용 중</p><p>전체 물리 메모리 기준</p></Spec>
+      <Spec icon={<WindowMark />} label="시스템" title={snapshot?.os.name || missing}><p>{snapshot?.os.version || '버전 정보 없음'}{snapshot?.os.build && ` · ${snapshot.os.build}`}</p><p>켜진 시간 {formatUptime(snapshot?.os.uptimeSeconds)}</p></Spec>
+    </Card></section>,
+    performance:<section className="performance-section" aria-labelledby="performance-title">
+      <div className="section-heading"><h2 id="performance-title">실시간 성능</h2><span>최근 60초<span className="text-separator">·</span>1초 간격</span></div>
+      <div className="chart-grid">
+        <MetricChart kind="cpu" label="CPU" detail="전체 프로세서" reading={snapshot?.cpu.usage} samples={history} value={(sample) => sample.cpu} now={now} stale={stale} />
+        <MetricChart kind="memory" label="메모리" detail="물리 메모리" reading={snapshot?.memory.usage} samples={history} value={(sample) => sample.memory} now={now} stale={stale} />
+        <MetricChart kind="gpu" label="GPU" detail={gpu?.name || gpuMissing} toolbar={gpuSelector} reading={gpuReading} samples={history} value={(sample) => gpu ? sample.gpus[gpu.id] ?? null : null} now={now} stale={stale} />
+      </div>
+    </section>,
+    storage:<StoragePanel drives={snapshot?.storage || []} info={snapshot?.sections.storage} now={now} />,
+    displays:<DisplaysPanel displays={snapshot?.displays || []} info={snapshot?.sections.displays} now={now} />,
+    devices:<DevicesPanel devices={snapshot?.devices || []} info={snapshot?.sections.devices} now={now} />,
+    bgm:theme.active?.definition.bgm ? <BgmWidget key={`${theme.active.pluginId}:${theme.active.contentHash}`} api={api} theme={theme.active} state={playback} /> : null,
+  };
+  return <AstryxProvider appearance={appearance}><ThemeRuntime appearance={appearance} theme={theme} className={`app-shell ${windowInfo.maximized ? 'maximized' : ''}`}>
+    <LocalThemeAudio api={api} state={playback} />
     <header className="app-header">
       <div className="header-brand"><Brand /><strong>Kitvi</strong><span>v{windowInfo.version}</span></div>
       <nav className="app-navigation" aria-label="주 메뉴">
@@ -96,6 +125,7 @@ export function App() {
         <button data-update-available={!!update?.availableVersion || undefined} aria-current={page === 'settings' ? 'page' : undefined} onClick={() => setPage('settings')}><Settings size={16} />설정</button>
       </nav>
       <div className="header-actions">
+        {(theme.active || theme.selectedId || theme.previewing) && <button className="theme-reset-button" onClick={() => run(() => api.applyTheme(null))} aria-label="기본 테마로 복원" title="기본 테마로 복원"><RotateCcw size={15} aria-hidden="true" /><span>기본 테마</span></button>}
         <button className="icon-button theme-button" disabled={!api} onClick={toggleAppearance} aria-label={appearance === 'dark' ? '화이트 모드로 전환' : '다크 모드로 전환'} title={appearance === 'dark' ? '화이트 모드' : '다크 모드'}>{appearance === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
         <div className="window-buttons" aria-label="창 조작">
           <button onClick={() => run(() => api.minimize())} aria-label="최소화" title="최소화"><Minus size={17} /></button>
@@ -105,35 +135,22 @@ export function App() {
       </div>
     </header>
     <main className="dashboard-scroll"><div className="dashboard-content">
-      {page === 'plugins' && <PluginsPanel api={api} appearance={appearance} />}
-      {page === 'settings' && <SettingsPanel api={api} />}
+      {theme.previewing && <div className="theme-banner" role="status"><span><strong>{theme.active?.name || 'Kitvi 기본 테마'}</strong>를 미리보고 있어요. 적용 전에는 저장되지 않아요.</span><div className="feature-inline-actions"><Button label="미리보기 적용" variant="primary" size="lg" onClick={() => run(() => api.applyTheme(theme.previewId))} /><Button label="미리보기 취소" size="lg" onClick={() => run(() => api.cancelThemePreview())} /></div></div>}
+      {(theme.message || themeError || playbackError) && <div className="notice" role="status"><Info size={19} aria-hidden="true" /><span>{themeError || playbackError || theme.message}</span></div>}
+      {error && <div className="notice error-notice" role="alert"><Info size={19} aria-hidden="true" /><span>{error}</span><button aria-label="알림 닫기" onClick={() => setError('')}><X size={16} /></button></div>}
+      {page === 'plugins' && <PluginsPanel api={api} appearance={appearance} onThemeSettings={showThemeSettings} />}
+      {page === 'settings' && <SettingsPanel api={api} theme={theme} />}
       <div hidden={page !== 'pc'}>
       {update?.availableVersion && <div className="notice" role="status"><Info size={19} /><span>Kitvi {update.availableVersion} 업데이트{update.phase === 'downloaded' ? '를 설치할 준비가 되었어요.' : '가 있어요.'}</span><Button label="설정에서 확인" size="lg" onClick={() => setPage('settings')} /></div>}
       <div className="page-heading">
         <div><div className="page-title"><h1>PC 상태</h1><span role="status"><Badge label={stateLabel} variant={state.collector.state === 'error' ? 'error' : stale || inventoryDelayed ? 'warning' : ready ? 'success' : 'neutral'} /></span></div><p>지금의 사용량과 연결된 하드웨어를 확인해요.</p></div>
         <div className="page-actions"><span className="last-received">{lastReceived ? `최근 수신 ${lastReceived}` : 'PC 정보를 준비하고 있어요.'}</span><Button className="refresh-button" label="새로고침" variant="primary" size="lg" icon={<RefreshCw size={17} />} onClick={refresh} isDisabled={!ready} isLoading={working} /></div>
       </div>
-      {error && <div className="notice error-notice" role="alert"><Info size={19} aria-hidden="true" /><span>{error}</span><button aria-label="알림 닫기" onClick={() => setError('')}><X size={16} /></button></div>}
       {(state.collector.state === 'error' || state.collector.state === 'reconnecting') && <div className="notice connection-notice" role="status"><Info size={19} aria-hidden="true" /><div><strong>{state.collector.state === 'error' ? 'PC 정보를 가져오지 못했어요' : 'PC에 다시 연결하고 있어요'}</strong><p>{state.collector.message}{snapshot && ' 마지막으로 받은 정보를 표시하고 있어요.'}</p></div>{state.collector.state === 'error' && <Button label="다시 연결" size="lg" onClick={() => run(() => api.retryCollector())} />}</div>}
-      <section aria-label="하드웨어 요약"><Card className="spec-grid" padding={0}>
-        <Spec icon={<Cpu size={18} aria-hidden="true" />} label="CPU" title={snapshot?.cpu.name || missing}><p>{snapshot?.cpu.cores != null ? `${snapshot.cpu.cores} 코어` : '코어 정보 없음'}<span className="text-separator">·</span>{snapshot?.cpu.threads != null ? `${snapshot.cpu.threads} 스레드` : '스레드 정보 없음'}</p></Spec>
-        <Spec icon={<Disc3 size={18} aria-hidden="true" />} label="GPU" title={gpu?.name || gpuMissing}><p>전용 메모리 {formatBytes(gpu?.dedicatedMemoryBytes)}</p><p className="driver-text">드라이버 {gpu?.driverVersion || '정보 없음'}</p>{gpu && ['stale', 'error'].includes(gpuFreshness) && <p className="warning-text">마지막으로 확인한 GPU 정보예요.</p>}</Spec>
-        <Spec icon={<CircuitBoard size={18} aria-hidden="true" />} label="메모리" title={formatBytes(snapshot?.memory.totalBytes)}><p>{formatBytes(snapshot?.memory.usedBytes)} 사용 중</p><p>전체 물리 메모리 기준</p></Spec>
-        <Spec icon={<WindowMark />} label="시스템" title={snapshot?.os.name || missing}><p>{snapshot?.os.version || '버전 정보 없음'}{snapshot?.os.build && ` · ${snapshot.os.build}`}</p><p>켜진 시간 {formatUptime(snapshot?.os.uptimeSeconds)}</p></Spec>
-      </Card></section>
-      <section className="performance-section" aria-labelledby="performance-title">
-        <div className="section-heading"><h2 id="performance-title">실시간 성능</h2><span>최근 60초<span className="text-separator">·</span>1초 간격</span></div>
-        <div className="chart-grid">
-          <MetricChart kind="cpu" label="CPU" detail="전체 프로세서" reading={snapshot?.cpu.usage} samples={history} value={(sample) => sample.cpu} now={now} stale={stale} />
-          <MetricChart kind="memory" label="메모리" detail="물리 메모리" reading={snapshot?.memory.usage} samples={history} value={(sample) => sample.memory} now={now} stale={stale} />
-          <MetricChart kind="gpu" label="GPU" detail={gpu?.name || gpuMissing} toolbar={gpuSelector} reading={gpuReading} samples={history} value={(sample) => gpu ? sample.gpus[gpu.id] ?? null : null} now={now} stale={stale} />
-        </div>
-      </section>
-      <div className="detail-grid"><StoragePanel drives={snapshot?.storage || []} info={snapshot?.sections.storage} now={now} /><DisplaysPanel displays={snapshot?.displays || []} info={snapshot?.sections.displays} now={now} /></div>
-      <DevicesPanel devices={snapshot?.devices || []} info={snapshot?.sections.devices} now={now} />
+      <div className="dashboard-sections" data-custom-layout={layout.custom} data-layout-columns={layout.columns} style={{ '--dashboard-columns':layout.columns } as React.CSSProperties}>{layout.order.map(id => sections[id] && <div className={`dashboard-section dashboard-section-${id}`} data-theme-section={id} key={id}>{sections[id]}</div>)}</div>
       <footer className="dashboard-footer"><span><Check size={15} aria-hidden="true" />PC 정보는 이 기기에서만 처리돼요.</span><span>Kitvi {windowInfo.version}</span></footer>
       </div>
     </div></main>
-  </div></AstryxProvider>;
+  </ThemeRuntime></AstryxProvider>;
 }
 function WindowMark() { return <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M2 6h14M6 6v10" stroke="currentColor" strokeWidth="1.6" /></svg>; }

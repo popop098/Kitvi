@@ -35,7 +35,7 @@ function DesignPreview() {
   return <AstryxProvider appearance={appearance}>
     <div className={`workbench${maximized ? ' is-maximized' : ''}`}>
       <header className="workbench-header">
-        <div className="workbench-brand"><img className="workbench-brand-icon" src="kitvi-icon.png" width="30" height="30" alt="" draggable={false} /><strong>Kitvi</strong><span>0.6.0</span></div>
+        <div className="workbench-brand"><img className="workbench-brand-icon" src="kitvi-icon.png" width="30" height="30" alt="" draggable={false} /><strong>Kitvi</strong><span>0.7.0</span></div>
         <span className="header-context">디자인 작업실</span>
         <div className="header-controls">
           <button className="appearance-control" aria-label={appearance === 'light' ? '다크 모드로 전환' : '화이트 모드로 전환'} title="화면 모드 전환" onClick={() => void changeAppearance()}>
@@ -111,4 +111,5 @@ class PreviewBoundary extends React.Component<{ children: React.ReactNode }, { f
   }
 }
 createRoot(document.getElementById('root')!).render(<PreviewBoundary><DesignPreview /></PreviewBoundary>);
+
 

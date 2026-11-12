@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "kitvi.theme.cozy-desk",
+  "name": "Cozy Desk",
+  "modes": {
+    "light": {"canvas":"#f4efe6","panel":"#fffaf2","surface":"#eee5d7","text":"#302b25","muted":"#6b5f50","border":"#d8cdbb","accent":"#a33d40","accentText":"#ffffff","accentSoft":"#f9e3df","cpu":"#ad454c","memory":"#75639b","gpu":"#347c7a"},
+    "dark": {"canvas":"#211e1a","panel":"#2c2721","surface":"#383027","text":"#f8eddd","muted":"#c6b8a4","border":"#514536","accent":"#ffa99a","accentText":"#361a17","accentSoft":"#4a2c27","cpu":"#f7a192","memory":"#c6b0ec","gpu":"#9acdc5"}
+  },
+  "typography": {"fontFamily":"pretendard","baseSize":16},
+  "shape": {"radius":14,"spacing":1.1},
+  "background": {"asset":"assets/paper.png","opacity":0.22,"fit":"cover"},
+  "layout": {"order":["summary","performance","bgm","storage","displays","devices"],"hidden":[],"columns":2},
+  "bgm": {"title":"책상 위 작은 소리","tracks":[{"id":"soft-loop","title":"SDK 합성음 예제 · 8초","source":{"type":"asset","path":"assets/soft-loop.wav"}}],"loop":true,"volume":20}
+}

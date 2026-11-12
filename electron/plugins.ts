@@ -6,6 +6,8 @@ import yauzl from 'yauzl';
 import semver from 'semver';
 import type { InstalledPlugin, PluginManifest, PluginPreview, PluginState } from '../shared/features.ts';
 import { validateArchivePath, validatePluginId, validatePluginManifest } from '../shared/plugin-schema.ts';
+import { themeResourceReferences, validateThemeDefinition } from '../shared/theme-schema.ts';
+import type { ThemeDefinition } from '../shared/themes.ts';
 
 const ARCHIVE_LIMIT = 16 * 1024 * 1024;
 const FILE_LIMIT = 4 * 1024 * 1024;
@@ -13,9 +15,9 @@ const FONT_LIMIT = 2 * 1024 * 1024;
 const STORAGE_LIMIT = 64 * 1024;
 const PREVIEW_TTL = 10 * 60 * 1000;
 const assetName = /^[A-Za-z0-9][A-Za-z0-9._-]{0,159}\.kitvi-plugin\.zip$/;
-const mimeTypes: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.otf': 'font/otf', '.txt': 'text/plain; charset=utf-8', '.md': 'text/plain; charset=utf-8' };
+const mimeTypes: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.otf': 'font/otf', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.txt': 'text/plain; charset=utf-8', '.md': 'text/plain; charset=utf-8' };
 type Integrity = { treeHash: string; files: Record<string, string> };
-type Consent = Pick<InstalledPlugin, 'version' | 'contentHash' | 'source' | 'author' | 'authorEmail' | 'permissions'> & { acceptedAt: string };
+type Consent = Pick<InstalledPlugin, 'version' | 'contentHash' | 'source' | 'author' | 'authorEmail' | 'permissions' | 'apiVersion' | 'kind'> & { acceptedAt: string };
 type UpdateBinding = Pick<InstalledPlugin, 'id' | 'source' | 'version' | 'contentHash'>;
 type Pending = { token: string; manifest: PluginManifest; source: string; contentHash: string; integrity: Integrity; directory: string; expires: number; update?: UpdateBinding };
 export interface PluginManagerOptions { directory: string; appVersion: string; log: (message: string) => void; beforeCommit?: () => void }
@@ -56,8 +58,8 @@ function repositoryId(value: string): string {
   return `${match[1]}/${match[2].replace(/\.git$/, '')}`.toLowerCase();
 }
 function isSource(value: unknown): value is string { return value === 'local' || (typeof value === 'string' && value.startsWith('github:') && (() => { try { return repositoryId(value.slice(7)) === value.slice(7); } catch { return false; } })()); }
-function samePublisherAndPermissions(left: PluginManifest, right: Pick<PluginManifest, 'author' | 'authorEmail' | 'permissions'>): boolean {
-  return left.author === right.author && left.authorEmail === right.authorEmail && left.permissions.length === right.permissions.length && left.permissions.every((permission) => right.permissions.includes(permission));
+function samePublisherAndPermissions(left: PluginManifest, right: Pick<PluginManifest, 'author' | 'authorEmail' | 'permissions' | 'apiVersion' | 'kind'>): boolean {
+  return left.apiVersion === right.apiVersion && left.kind === right.kind && left.author === right.author && left.authorEmail === right.authorEmail && left.permissions.length === right.permissions.length && left.permissions.every((permission) => right.permissions.includes(permission));
 }
 function consentMatches(plugin: InstalledPlugin, consent: Consent | undefined): boolean {
   return !!consent && consent.version === plugin.version && consent.contentHash === plugin.contentHash && consent.source === plugin.source && samePublisherAndPermissions(plugin, consent);
@@ -69,6 +71,33 @@ function resourceMime(name: string): string {
   if (mimeTypes[extension]) return mimeTypes[extension];
   if (/^(?:readme|license|licence|copying|notice)$/i.test(path.posix.basename(name))) return 'text/plain; charset=utf-8';
   throw new Error(`Unsupported plugin file type: ${name}`);
+}
+function assertAssetSignature(name: string, data: Buffer): void {
+  const ext = path.posix.extname(name).toLowerCase(), ascii = (from: number, to: number) => data.toString('ascii', from, to);
+  const valid = ext === '.png' ? data.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
+    : ['.jpg', '.jpeg'].includes(ext) ? data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff
+    : ext === '.gif' ? ['GIF87a', 'GIF89a'].includes(ascii(0, 6))
+    : ext === '.webp' ? ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP'
+    : ext === '.woff2' ? ascii(0, 4) === 'wOF2' : ext === '.woff' ? ascii(0, 4) === 'wOFF'
+    : ext === '.otf' ? ascii(0, 4) === 'OTTO' : ext === '.ttf' ? data.subarray(0, 4).equals(Buffer.from([0, 1, 0, 0])) || ascii(0, 4) === 'true'
+    : ext === '.mp3' ? ascii(0, 3) === 'ID3' || (data.length >= 2 && data[0] === 0xff && (data[1] & 0xe0) === 0xe0)
+    : ext === '.ogg' ? ascii(0, 4) === 'OggS' : ext === '.wav' ? ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WAVE'
+    : ext === '.m4a' ? ascii(4, 8) === 'ftyp' && ['M4A ', 'M4B ', 'isom', 'mp42'].includes(ascii(8, 12)) : false;
+  if (!valid) throw new Error(`Theme asset content does not match its declared MIME type: ${name}`);
+}
+function readTheme(directory: string, manifest: PluginManifest, integrity?: Integrity): ThemeDefinition {
+  if (manifest.apiVersion !== 2 || manifest.kind !== 'theme' || !manifest.permissions.includes('theme')) throw new Error('Plugin does not provide a theme.');
+  const data = readLimited(safeChild(directory, manifest.theme), 64 * 1024);
+  if (integrity && integrity.files[manifest.theme] !== createHash('sha256').update(data).digest('hex')) throw new Error('Theme definition changed; integrity check failed.');
+  const definition = validateThemeDefinition(JSON.parse(data.toString('utf8')));
+  if (definition.id !== manifest.id) throw new Error('Theme ID must match the package plugin ID.');
+  if (definition.bgm && !manifest.permissions.includes('playback')) throw new Error('A theme with BGM must declare the playback permission.');
+  for (const reference of themeResourceReferences(definition)) {
+    const asset = readLimited(safeChild(directory, reference.path), fileLimit(reference.path));
+    if (integrity && integrity.files[reference.path] !== createHash('sha256').update(asset).digest('hex')) throw new Error('Theme asset changed; integrity check failed.');
+    assertAssetSignature(reference.path, asset);
+  }
+  return definition;
 }
 function treeHash(directory: string, files?: Record<string, string>): string {
   assertNoLinks(directory); const hash = createHash('sha256'); let count = 0, total = 0; const names = new Set<string>();
@@ -240,19 +269,20 @@ export class PluginManager extends EventEmitter {
       const { enabled, source, installedAt, contentHash, needsConsent: _hostOnly, ...rawManifest } = record;
       const manifest = validatePluginManifest(rawManifest, this.options.appVersion);
       if (ids.has(manifest.id) || typeof enabled !== 'boolean' || !isSource(source) || typeof installedAt !== 'string' || !Number.isFinite(Date.parse(installedAt)) || typeof contentHash !== 'string' || !/^[a-f0-9]{64}$/.test(contentHash)) throw new Error('Invalid installed plugin registry record.');
-      const directory = safeChild(this.resources, manifest.id); const entry = safeChild(directory, manifest.entry);
-      if (!fs.lstatSync(directory).isDirectory() || !fs.lstatSync(entry).isFile()) throw new Error('Installed plugin files are missing.');
+      const directory = safeChild(this.resources, manifest.id);
+      if (!fs.lstatSync(directory).isDirectory() || (manifest.entry && !fs.lstatSync(safeChild(directory, manifest.entry)).isFile())) throw new Error('Installed plugin files are missing.');
       const expected: unknown = Object.hasOwn(storedIntegrity, manifest.id) ? (storedIntegrity as Record<string, unknown>)[manifest.id] : null;
       if (!expected || typeof expected !== 'object' || Array.isArray(expected) || typeof (expected as Integrity).treeHash !== 'string' || !/^[a-f0-9]{64}$/.test((expected as Integrity).treeHash)) throw new Error('Plugin registry integrity record is invalid.');
       const files: Record<string, string> = Object.create(null) as Record<string, string>;
       if (treeHash(directory, files) !== (expected as Integrity).treeHash) throw new Error(`Installed plugin ${manifest.id} changed; integrity check failed.`);
       this.integrity.set(manifest.id, { treeHash: (expected as Integrity).treeHash, files });
+      if (manifest.apiVersion === 2) readTheme(directory, manifest, { treeHash: (expected as Integrity).treeHash, files });
       const plugin: InstalledPlugin = { ...manifest, enabled, source, installedAt, contentHash, needsConsent: true };
       const storedConsent = storedConsents && Object.hasOwn(storedConsents, manifest.id) ? (storedConsents as Record<string, unknown>)[manifest.id] : undefined;
       if (storedConsent && typeof storedConsent === 'object' && !Array.isArray(storedConsent)) {
         const receipt = storedConsent as Record<string, unknown>;
-        if (typeof receipt.acceptedAt === 'string' && Number.isFinite(Date.parse(receipt.acceptedAt)) && typeof receipt.version === 'string' && semver.valid(receipt.version) === receipt.version && typeof receipt.contentHash === 'string' && /^[a-f0-9]{64}$/.test(receipt.contentHash) && isSource(receipt.source) && typeof receipt.author === 'string' && (receipt.authorEmail === undefined || typeof receipt.authorEmail === 'string') && Array.isArray(receipt.permissions) && receipt.permissions.every((permission) => ['storage', 'downloads', 'media'].includes(permission))) {
-          const consent: Consent = { version: receipt.version, contentHash: receipt.contentHash, source: receipt.source, author: receipt.author, ...(typeof receipt.authorEmail === 'string' ? { authorEmail: receipt.authorEmail } : {}), permissions: [...receipt.permissions], acceptedAt: receipt.acceptedAt };
+        if (typeof receipt.acceptedAt === 'string' && Number.isFinite(Date.parse(receipt.acceptedAt)) && typeof receipt.version === 'string' && semver.valid(receipt.version) === receipt.version && typeof receipt.contentHash === 'string' && /^[a-f0-9]{64}$/.test(receipt.contentHash) && isSource(receipt.source) && typeof receipt.author === 'string' && (receipt.authorEmail === undefined || typeof receipt.authorEmail === 'string') && (receipt.apiVersion === undefined || receipt.apiVersion === 1 || receipt.apiVersion === 2) && (receipt.kind === undefined || receipt.kind === 'theme') && Array.isArray(receipt.permissions) && receipt.permissions.length <= 5 && new Set(receipt.permissions).size === receipt.permissions.length && receipt.permissions.every((permission) => ['storage', 'downloads', 'media', 'theme', 'playback'].includes(permission))) {
+          const consent: Consent = { apiVersion: receipt.apiVersion ?? 1, ...(receipt.kind === 'theme' ? { kind: 'theme' as const } : {}), version: receipt.version, contentHash: receipt.contentHash, source: receipt.source, author: receipt.author, ...(typeof receipt.authorEmail === 'string' ? { authorEmail: receipt.authorEmail } : {}), permissions: [...receipt.permissions], acceptedAt: receipt.acceptedAt };
           if (consentMatches(plugin, consent)) { consents.set(plugin.id, consent); plugin.needsConsent = false; }
         }
       }
@@ -305,7 +335,8 @@ export class PluginManager extends EventEmitter {
         if (manifest.version !== update.version) throw new Error('Plugin release tag and manifest version do not match.');
         if (!semver.gt(manifest.version, update.installed.version)) throw new Error('A plugin update must have a newer version.');
       }
-      const entry = safeChild(directory, manifest.entry); if (!fs.lstatSync(entry).isFile()) throw new Error('Plugin entry does not exist.');
+      if (manifest.entry && !fs.lstatSync(safeChild(directory, manifest.entry)).isFile()) throw new Error('Plugin entry does not exist.');
+      if (manifest.apiVersion === 2) readTheme(directory, manifest);
       const contentHash = createHash('sha256').update(buffer).digest('hex'); this.checkUpdate(manifest, source, contentHash);
       const files: Record<string, string> = Object.create(null) as Record<string, string>; const integrity = { treeHash: treeHash(directory, files), files };
       signal?.throwIfAborted();
@@ -398,7 +429,7 @@ export class PluginManager extends EventEmitter {
       validatePluginId(id); const installed = this.get(id);
       if (!installed || typeof contentHash !== 'string' || installed.contentHash !== contentHash) throw new Error('Installed plugin package changed; review its activation notice again.');
       const consents = new Map(this.consents);
-      consents.set(id, { version: installed.version, contentHash, source: installed.source, author: installed.author, ...(installed.authorEmail ? { authorEmail: installed.authorEmail } : {}), permissions: [...installed.permissions], acceptedAt: new Date().toISOString() });
+      consents.set(id, { apiVersion: installed.apiVersion, ...(installed.kind ? { kind: installed.kind } : {}), version: installed.version, contentHash, source: installed.source, author: installed.author, ...(installed.authorEmail ? { authorEmail: installed.authorEmail } : {}), permissions: [...installed.permissions], acceptedAt: new Date().toISOString() });
       this.save(this.current.plugins.map((plugin) => plugin.id === id ? { ...plugin, enabled: true } : plugin), consents); return this.finishedState();
     });
   }
@@ -422,6 +453,11 @@ export class PluginManager extends EventEmitter {
     const data = readLimited(file, fileLimit(name));
     if (this.integrity.get(id)?.files[name] !== createHash('sha256').update(data).digest('hex')) throw new Error('Plugin resource changed; integrity check failed.');
     return { data, mime };
+  }
+  getThemeDefinition(id: string): ThemeDefinition {
+    this.assertRunnable(id);
+    const plugin = this.get(id)!;
+    return readTheme(safeChild(this.resources, id), plugin, this.integrity.get(id));
   }
   private storageFile(id: string): string { const directory = safeChild(this.data, id); ensureDirectory(directory); return safeChild(directory, 'storage.json'); }
   private storageKey(key: string): void { if (typeof key !== 'string' || key.length < 1 || key.length > 128 || /[\x00-\x1f]/.test(key) || ['__proto__', 'constructor', 'prototype'].includes(key)) throw new Error('Invalid plugin storage key.'); }

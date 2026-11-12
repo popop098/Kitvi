@@ -11,10 +11,15 @@ import { PluginManager } from './plugins.ts';
 import { PluginUpdateService } from './plugin-updates.ts';
 import { MediaService } from './media-service.ts';
 import { PluginRuntime } from './plugin-runtime.ts';
+import { ThemeService } from './themes.ts';
+import { ThemePlaybackService } from './theme-playback.ts';
+import { readAuthorizedPluginResource, pluginResourceResponse } from './plugin-resource.ts';
+import type { ThemeState, ThemeCatalogEntry } from '../shared/themes.ts';
+import type { PlaybackViewport, LocalPlaybackReport } from '../shared/playback.ts';
 import type { MediaState, PluginPermission } from '../shared/features.ts';
 import type { Appearance, WindowInfo } from '../shared/contracts.ts';
 
-protocol.registerSchemesAsPrivileged(['kitvi', 'kitvi-plugin'].map((scheme) => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } })));
+protocol.registerSchemesAsPrivileged(['kitvi', 'kitvi-plugin'].map((scheme) => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: scheme === 'kitvi-plugin' } })));
 const designPreview = !app.isPackaged && process.env.KITVI_DESIGN_PREVIEW === '1';
 const designRefreshFile = join(__dirname, '../renderer/design-refresh.json');
 const ENTRY = `kitvi://app/${designPreview ? 'design-preview.html' : 'index.html'}`;
@@ -28,6 +33,9 @@ let updater: UpdateService;
 let plugins: PluginManager;
 let pluginUpdates: PluginUpdateService;
 let runtime: PluginRuntime<MediaService>;
+let themes: ThemeService;
+let playback: ThemePlaybackService;
+let activeTheme: ThemeCatalogEntry | null = null;
 let pluginSystemChanging = false;
 const folders = new Map<string, string>();
 let dialogBusy = false, installQuit = false;
@@ -54,6 +62,19 @@ function handle(channel: string, action: (...args: unknown[]) => unknown) {
   ipcMain.handle(channel, (event, ...args: unknown[]) => { authorize(event); return action(...args); });
 }
 function send(channel: string, value: unknown) { if (window && !window.isDestroyed()) window.webContents.send(channel, value); }
+function themeState(): ThemeState { const state = themes.state; const result = runtime?.enabled ? state : { ...state, active: null }; activeTheme = result.active; return result; }
+function updateWindowBackground() {
+  const active = runtime?.enabled ? activeTheme : null;
+  const color = active?.definition.modes[store.value.appearance].canvas;
+  window?.setBackgroundColor(color?.slice(0, 7) || (store.value.appearance === 'dark' ? '#1b1b1b' : '#f1f1f1'));
+}
+function themeMutation() { if (stopping || installQuit || pluginSystemChanging) throw new Error('변경 중이에요. 잠시 뒤 다시 시도해 주세요.'); }
+function themeId(value: unknown): string | null { if (value === null) return null; if (typeof value !== 'string' || value.length > 128) throw new Error('테마를 확인해 주세요.'); return value; }
+function playbackOwner(id: string) {
+  const found = plugin(id, 'playback');
+  if (themes.state.active?.pluginId !== id) throw new Error('현재 적용한 테마의 재생 기능만 사용할 수 있어요.');
+  return found;
+}
 function plugin(id: unknown, permission?: PluginPermission) {
   if (stopping || installQuit || !runtime?.enabled || typeof id !== 'string') throw new Error('요청을 처리할 수 없어요.');
   plugins.assertRunnable(id);
@@ -68,16 +89,21 @@ function beforePluginCommit() {
   if (hasActiveJobs()) throw new Error('진행 중인 미디어 작업을 완료하거나 취소한 뒤 업데이트해 주세요.');
 }
 async function pluginRequest(id: unknown, method: unknown, params: unknown): Promise<unknown> {
-  const methods: Record<string, PluginPermission> = { 'storage.get': 'storage', 'storage.set': 'storage', 'downloads.chooseFolder': 'downloads', 'downloads.openFolder': 'downloads', 'media.status': 'media', 'media.installEngine': 'media', 'media.analyze': 'media', 'media.start': 'media', 'media.cancel': 'media' };
+  const methods: Record<string, PluginPermission> = { 'storage.get': 'storage', 'storage.set': 'storage', 'downloads.chooseFolder': 'downloads', 'downloads.openFolder': 'downloads', 'media.status': 'media', 'media.installEngine': 'media', 'media.analyze': 'media', 'media.start': 'media', 'media.cancel': 'media', 'theme.getState': 'theme', 'playback.getState': 'playback', 'playback.requestTrack': 'playback', 'playback.pause': 'playback', 'playback.setVolume': 'playback' };
   if (typeof method !== 'string' || !Object.hasOwn(methods, method)) throw new Error('지원하지 않는 플러그인 API예요.');
   const found = plugin(id, methods[method]);
   const media = runtime.current;
   if (params == null) params = {};
   if (typeof params !== 'object' || Array.isArray(params) || JSON.stringify(params).length > 65536) throw new Error('요청 형식이 올바르지 않아요.');
   const value = params as Record<string, unknown>;
-  const keys: Record<string, string[]> = { 'storage.get': ['key'], 'storage.set': ['key','value'], 'downloads.chooseFolder': [], 'downloads.openFolder': [], 'media.status': [], 'media.installEngine': [], 'media.analyze': ['url'], 'media.start': ['url','mode'], 'media.cancel': ['jobId'] };
+  const keys: Record<string, string[]> = { 'storage.get': ['key'], 'storage.set': ['key','value'], 'downloads.chooseFolder': [], 'downloads.openFolder': [], 'media.status': [], 'media.installEngine': [], 'media.analyze': ['url'], 'media.start': ['url','mode'], 'media.cancel': ['jobId'], 'theme.getState': [], 'playback.getState': [], 'playback.requestTrack': ['trackId'], 'playback.pause': [], 'playback.setVolume': ['volume'] };
   if (Object.keys(value).some((key) => !keys[method].includes(key))) throw new Error('허용되지 않은 요청 값이에요.');
   switch (method) {
+    case 'theme.getState': return { active: themes.state.active?.pluginId === found.id, selected: themes.state.selectedId === found.id, definition: plugins.getThemeDefinition(found.id), appearance: store.value.appearance };
+    case 'playback.getState': playbackOwner(found.id); return playback.state;
+    case 'playback.requestTrack': playbackOwner(found.id); if (typeof value.trackId !== 'string') throw new Error('곡을 확인해 주세요.'); return playback.requestTrack(value.trackId);
+    case 'playback.pause': playbackOwner(found.id); return playback.pause();
+    case 'playback.setVolume': playbackOwner(found.id); return playback.setVolume(value.volume as number);
     case 'storage.get': return plugins.pluginStorageGet(found.id, value.key as string);
     case 'storage.set': return plugins.pluginStorageSet(found.id, value.key as string, value.value);
     case 'downloads.chooseFolder': {
@@ -114,7 +140,7 @@ function setupIpc() {
   handle('appearance:set', (value) => {
     if (value !== 'light' && value !== 'dark') throw new Error('화면 모드가 올바르지 않아요.');
     store.save({ appearance: value as Appearance });
-    window?.setBackgroundColor(value === 'dark' ? '#1b1b1b' : '#f1f1f1');
+    updateWindowBackground();
     return value;
   });
   handle('window:get', () => windowInfo());
@@ -127,6 +153,18 @@ function setupIpc() {
   handle('update:download', () => updater.download());
   handle('update:install', () => updater.install());
   handle('update:release', () => shell.openExternal('https://github.com/popop098/Kitvi/releases'));
+  handle('theme:get', () => { const state = themeState(); playback?.setTheme(state.active); updateWindowBackground(); return state; });
+  handle('theme:preview', (id) => { themeMutation(); return themes.preview(themeId(id)); });
+  handle('theme:apply', (id) => { themeMutation(); return themes.apply(themeId(id)); });
+  handle('theme:cancel', () => { themeMutation(); return themes.cancelPreview(); });
+  handle('playback:get', () => playback.state);
+  handle('playback:play', (id) => { themeMutation(); if (typeof id !== 'string' || id.length > 64) throw new Error('곡을 확인해 주세요.'); return playback.playTrack(id); });
+  handle('playback:pause', () => playback.pause());
+  handle('playback:volume', (value) => playback.setVolume(value as number));
+  handle('playback:loop', (value) => playback.setLoop(value as boolean));
+  handle('playback:youtube', (value) => { themeMutation(); return playback.setYouTubeSource(value as string); });
+  handle('playback:viewport', (value) => { playback.setViewport(value as PlaybackViewport); });
+  handle('playback:local', (value) => playback.reportLocal(value as LocalPlaybackReport));
   handle('plugins:get', () => plugins.state);
   handle('plugins:system', async (enabled, acceptNotice) => {
     if (typeof enabled !== 'boolean' || acceptNotice !== undefined && typeof acceptNotice !== 'boolean') throw new Error('설정값을 확인해 주세요.');
@@ -137,6 +175,7 @@ function setupIpc() {
         pluginUpdates.setPaused(true);
         folders.clear();
         const cleanup = runtime.setEnabled(false);
+        const state = themeState(); playback.setTheme(null); updateWindowBackground(); send('theme:changed', state);
         // Handle cleanup rejection even if persisting the switch also fails.
         const results = await Promise.allSettled([plugins.setSystemEnabled(false), cleanup]);
         for (const result of results) if (result.status === 'rejected') throw result.reason;
@@ -145,6 +184,7 @@ function setupIpc() {
         try { await runtime.setEnabled(true); }
         catch (error) { await plugins.setSystemEnabled(false); throw error; }
         pluginUpdates.setPaused(false);
+        const state = themeState(); playback.setTheme(state.active); updateWindowBackground(); send('theme:changed', state);
       }
       return plugins.state;
     } finally { pluginSystemChanging = false; send('plugins:changed', plugins.state); }
@@ -192,6 +232,10 @@ async function createWindow() {
     title: designPreview ? 'Kitvi · 디자인 작업실' : 'Kitvi', icon: join(__dirname, '../renderer/kitvi.ico'), frame: false, transparent: false, roundedCorners: true, show: false, autoHideMenuBar: true,
     backgroundColor: store.value.appearance === 'dark' ? '#1b1b1b' : '#f1f1f1',
     webPreferences: { preload: join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, spellcheck: false, devTools: !app.isPackaged } });
+  themeState();
+  playback = new ThemePlaybackService({ window, getActiveTheme: () => runtime.enabled ? activeTheme : null, canRun: (id) => runtime.enabled && plugins.canRun(id) && !!plugins.get(id)?.permissions.includes('playback'), log });
+  playback.on('state', (state) => send('playback:changed', state));
+  updateWindowBackground();
   window.setMenu(null);
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (url !== ENTRY) event.preventDefault(); });
@@ -231,6 +275,11 @@ else {
     app.setAppUserModelId('com.popop098.kitvi'); Menu.setApplicationMenu(null);
     store = new SettingsStore(dataDirectory);
     plugins = new PluginManager({ directory: dataDirectory, appVersion: app.getVersion(), beforeCommit: beforePluginCommit, log });
+    themes = new ThemeService({ directory: dataDirectory, manager: plugins, log });
+    themes.on('state', () => {
+      if (stopping || !store) return;
+      const state = themeState(); playback?.setTheme(state.active); updateWindowBackground(); send('theme:changed', state);
+    });
     runtime = new PluginRuntime(() => {
       const media = new MediaService({ directory: join(dataDirectory, 'media-engine'), runtimeExecutable: process.execPath, log });
       media.on('state', () => {
@@ -259,7 +308,7 @@ else {
         if (path.startsWith('..' + sep) || path === '..' || path.includes(':') || !existsSync(file) || !statSync(file).isFile()) return new Response('Not found', { status: 404 });
         const response = await net.fetch(pathToFileURL(file).toString());
         const headers = new Headers(response.headers);
-        headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src kitvi-plugin:; form-action 'none'");
+        headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' kitvi-plugin:; img-src 'self' data: kitvi-plugin:; media-src kitvi-plugin:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src kitvi-plugin:; form-action 'none'");
         headers.set('X-Content-Type-Options', 'nosniff');
         const body = file.endsWith('.html') ? (await response.text())
           .replace('data-appearance="light"', `data-appearance="${store.value.appearance}"`)
@@ -271,8 +320,12 @@ else {
       try {
         const url = new URL(request.url);
         if (request.method !== 'GET' || url.username || url.password || url.port || !runtime.enabled || !plugins.canRun(url.hostname)) return new Response('Not found', { status: 404 });
-        const resource = await plugins.readResource(url.hostname, decodeURIComponent(url.pathname).replace(/^\//, ''));
-        return new Response(new Uint8Array(resource.data), { headers: { 'Content-Type': resource.mime, 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "sandbox allow-scripts; default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'" } });
+        const expectedHash = url.searchParams.get('v');
+        if (expectedHash && expectedHash !== plugins.get(url.hostname)?.contentHash) return new Response('Not found', { status: 404 });
+        const resource = await readAuthorizedPluginResource(plugins, () => runtime.enabled, url.hostname, decodeURIComponent(url.pathname).replace(/^\//, ''), expectedHash);
+        const response = pluginResourceResponse(resource, request.headers.get('range'));
+        response.headers.set('Content-Security-Policy', "sandbox allow-scripts; default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'");
+        return response;
       } catch { return new Response('Not found', { status: 404 }); }
     });
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
@@ -304,6 +357,7 @@ else {
     event.preventDefault();
     if (stopping) return;
     stopping = true; if (saveTimer) clearTimeout(saveTimer); saveWindow(); unwatchFile(designRefreshFile);
+    playback?.dispose(); themes?.dispose();
     updater?.dispose();
     Promise.allSettled([collector?.stop(), runtime?.stop(), (async () => { await pluginUpdates?.dispose(); await plugins?.dispose(); })()]).finally(() => { stopped = true; app.quit(); });
   });

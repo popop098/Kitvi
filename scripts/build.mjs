@@ -5,8 +5,9 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 await import('./create-icon.mjs');
 await import('./licenses.mjs');
+await import('./sdk-types.mjs');
 await mkdir(resolve(root, 'build/renderer'), { recursive: true });
-await build({ entryPoints: [resolve(root, 'electron/main.ts'), resolve(root, 'electron/preload.ts')], bundle: true, platform: 'node', target: 'node22', format: 'cjs', external: ['electron', 'electron-updater'], outdir: resolve(root, 'build/electron'), outExtension: { '.js': '.cjs' }, sourcemap: false });
+await build({ entryPoints: [resolve(root, 'electron/main.ts'), resolve(root, 'electron/preload.ts'), resolve(root, 'electron/player-preload.ts')], bundle: true, platform: 'node', target: 'node22', format: 'cjs', external: ['electron', 'electron-updater'], outdir: resolve(root, 'build/electron'), outExtension: { '.js': '.cjs' }, sourcemap: false });
 for (const file of ['index.html', 'design-preview.html']) {
   await writeFile(resolve(root, 'build/renderer', file), await readFile(resolve(root, 'renderer', file)));
 }

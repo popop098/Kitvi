@@ -4,6 +4,8 @@ import { Card } from '@astryxdesign/core/Card';
 import { ArrowLeft, Download, ExternalLink, FolderOpen, Info, Package, Plus, RefreshCw, RotateCw, Trash2, X } from 'lucide-react';
 import type { Appearance, KitviApi } from '../shared/contracts.ts';
 import type { InstalledPlugin, MediaState, PluginPermission, PluginPreview, PluginState, PluginUpdatesState, PluginUpdateStatus, UpdateState } from '../shared/features.ts';
+import type { ThemeState } from '../shared/themes.ts';
+import { ThemeSettings } from './ThemeSettings.tsx';
 
 const errorMessage = (error: unknown) => error instanceof Error && error.message
   ? error.message.replace(/^Error invoking remote method '[^']+':\s*(?:Error:\s*)?/, '')
@@ -16,6 +18,8 @@ const permissionCopy: Record<PluginPermission, { name: string; description: stri
   storage: { name: '설정 저장', description: '이 플러그인 전용 공간에 설정을 저장하고 읽어요.' },
   downloads: { name: '다운로드 폴더', description: '직접 선택한 폴더에 파일을 저장하고 폴더를 열어요.' },
   media: { name: '미디어 다운로드', description: '미디어 엔진을 설치하고, 주소를 분석하거나 다운로드를 실행해요.' },
+  theme: { name: '앱 테마', description: '직접 선택하면 앱의 색상, 배경, 글꼴과 PC 상태 카드 배치를 바꿔요.' },
+  playback: { name: '배경음 재생', description: '호스트 재생 버튼으로 패키지 배경음이나 화면에 보이는 YouTube 영상을 재생해요.' },
 };
 function FeatureNotice({ children, error = false, onClose }: { children: React.ReactNode; error?: boolean; onClose?: () => void }) {
   return <div className={`feature-notice ${error ? 'feature-notice-error' : ''}`} role={error ? 'alert' : 'status'}><Info size={19} aria-hidden="true" /><span>{children}</span>{onClose && <button className="icon-button" aria-label="알림 닫기" onClick={onClose}><X size={17} /></button>}</div>;
@@ -34,8 +38,12 @@ function PluginConsentDialog({ title, description, busy, onClose, children }: { 
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current, trigger = document.activeElement;
-    element?.showModal();
-    return () => { element?.close(); if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus({ preventScroll: true }); };
+    let live = true;
+    const show = () => { if (live) element?.showModal(); };
+    // Hide the native player before placing trusted consent above renderer content.
+    const hidePlayer = window.kitvi?.setPlaybackViewport;
+    if (hidePlayer) void hidePlayer({x:0,y:58,width:0,height:0,visible:false}).then(show, show); else show();
+    return () => { live = false; element?.close(); if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus({ preventScroll: true }); };
   }, []);
   return <dialog ref={dialog} className="plugin-consent-dialog" aria-labelledby="plugin-consent-title" aria-describedby="plugin-consent-description" aria-busy={busy} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}><div className="plugin-consent-heading"><Info size={22} aria-hidden="true" /><h2 id="plugin-consent-title">{title}</h2></div><p id="plugin-consent-description" className="plugin-consent-description">{description}</p>{children}</dialog>;
 }
@@ -44,7 +52,7 @@ const pluginCanRun = (state: PluginState | null, plugin: InstalledPlugin) => sta
 const updateLabels: Record<UpdateState['phase'], string> = { idle: '업데이트 확인', checking: '새 버전 확인 중', available: '새 버전이 있어요', downloading: '업데이트 다운로드 중', downloaded: '다시 시작할 준비 완료', 'up-to-date': '최신 버전이에요', error: '업데이트 확인 필요', disabled: '직접 설치가 필요해요' };
 const pluginUpdateLabels: Record<PluginUpdateStatus, string> = { idle: '업데이트를 아직 확인하지 않았어요.', checking: '새 버전을 확인하고 있어요.', current: '최신 버전이에요.', available: '새 버전으로 업데이트할 수 있어요.', unsupported: '로컬 ZIP은 새 파일을 선택해 업데이트해 주세요.', error: '새 버전을 확인하지 못했어요. 다시 확인해 주세요.' };
 
-export function SettingsPanel({ api }: { api: KitviApi }) {
+export function SettingsPanel({ api, theme }: { api: KitviApi; theme?: ThemeState }) {
   const [state, setState] = useState<UpdateState | null>(null);
   const [pluginUpdates, setPluginUpdates] = useState<PluginUpdatesState | null>(null);
   const [pending, setPending] = useState('');
@@ -76,7 +84,8 @@ export function SettingsPanel({ api }: { api: KitviApi }) {
   const busy = !!pending || state?.phase === 'checking' || state?.phase === 'downloading';
   const checkedAt = state?.checkedAt && Number.isFinite(Date.parse(state.checkedAt)) ? new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(state.checkedAt)) : '아직 확인하지 않았어요';
   return <div className="feature-page settings-page">
-    <div className="page-heading"><div><div className="page-title"><h1>설정</h1></div><p>Kitvi를 최신 상태로 유지해요.</p></div></div>
+    <div className="page-heading"><div><div className="page-title"><h1>설정</h1></div><p>앱 모양과 업데이트를 관리해요.</p></div></div>
+    {theme && <ThemeSettings api={api} theme={theme} />}
     {error && <FeatureNotice error onClose={() => setError('')}>{error}</FeatureNotice>}
     <section aria-labelledby="update-settings-title"><Card className="feature-card" padding={0}>
       <div className="feature-card-heading"><div><h2 id="update-settings-title">앱 업데이트</h2><p>GitHub Releases에 공개된 Preview 버전까지 확인해요.</p></div><span className="feature-version">{state ? `현재 버전 ${state.currentVersion}` : '버전 확인 중'}</span></div>
@@ -105,7 +114,7 @@ export function SettingsPanel({ api }: { api: KitviApi }) {
   </div>;
 }
 
-export function PluginsPanel({ api, appearance }: { api: KitviApi; appearance: Appearance }) {
+export function PluginsPanel({ api, appearance, onThemeSettings }: { api: KitviApi; appearance: Appearance; onThemeSettings?: () => void }) {
   const [state, setState] = useState<PluginState | null>(null);
   const [updates, setUpdates] = useState<PluginUpdatesState | null>(null);
   const [repository, setRepository] = useState('popop098/kitvi-YT-downloader');
@@ -190,7 +199,7 @@ export function PluginsPanel({ api, appearance }: { api: KitviApi; appearance: A
     else void run(`toggle:${plugin.id}`, async (commit) => { commit(await api.setPluginEnabled(plugin.id, enabled)); });
   };
   const systemControl = <section className="plugin-system-settings" aria-labelledby="plugin-system-title"><Card className="feature-card" padding={0}><div className="feature-setting-row"><div><h2 id="plugin-system-title">플러그인 사용</h2><p>{systemEnabled ? '동의하고 활성화한 플러그인만 실행할 수 있어요.' : '현재 꺼져 있어요. 플러그인을 가져오고 정보를 확인할 수 있어요.'}</p></div><Toggle label="플러그인 사용" checked={systemEnabled} disabled={!state || busy} onChange={changeSystemEnabled} /></div></Card></section>;
-  return <>{selected ? <div className="feature-page plugin-workspace"><div className="plugin-workspace-heading"><Button label="플러그인 목록" size="lg" icon={<ArrowLeft size={17} />} onClick={() => setSelectedId('')} /><div className="plugin-workspace-title"><h1>{selected.name}</h1><span>{selected.version} · {selected.author}</span></div></div>{systemControl}<PluginFrame key={`${selected.id}:${selected.contentHash}`} api={api} appearance={appearance} plugin={selected} runtimeState={latestState} /></div> : <div className="feature-page plugins-page">
+  return <>{selected ? <div className="feature-page plugin-workspace"><div className="plugin-workspace-heading"><Button label="플러그인 목록" size="lg" icon={<ArrowLeft size={17} />} onClick={() => setSelectedId('')} /><div className="plugin-workspace-title"><h1>{selected.name}</h1><span>{selected.version} · {selected.author}</span></div></div>{systemControl}{selected.entry ? <PluginFrame key={`${selected.id}:${selected.contentHash}`} api={api} appearance={appearance} plugin={selected} runtimeState={latestState} /> : <FeatureNotice>이 테마는 별도 화면 없이 앱에 적용돼요.{onThemeSettings && <Button label="테마 설정" size="lg" onClick={onThemeSettings} />}</FeatureNotice>}</div> : <div className="feature-page plugins-page">
     <div className="page-heading"><div><div className="page-title"><h1>플러그인</h1></div><p>필요한 기능을 추가하고 관리해요.</p></div><div className="plugin-page-actions"><span className="feature-caption">{state ? `${state.plugins.length}개 설치됨` : '목록을 불러오는 중'}</span><Button label="업데이트 확인" size="lg" icon={<RefreshCw size={17} />} isDisabled={busy || updateCheckBusy || !state || !systemEnabled} isLoading={updateCheckBusy} onClick={() => void checkUpdates()} /></div></div>
     {error && <FeatureNotice error onClose={() => setError('')}>{error}</FeatureNotice>}
     {updatesError && <FeatureNotice error onClose={() => setUpdatesError('')}>플러그인 업데이트를 확인하지 못했어요. {updatesError}</FeatureNotice>}
@@ -226,7 +235,7 @@ export function PluginsPanel({ api, appearance }: { api: KitviApi; appearance: A
             <div className="plugin-update-summary" aria-live="polite" aria-atomic="true"><div className="plugin-update-versions"><span>현재 {plugin.version}</span>{availableVersion && <><span aria-hidden="true">→</span><strong>새 버전 {availableVersion}</strong></>}</div><p>{!systemEnabled ? '플러그인 사용을 켜면 새 버전을 확인하고 업데이트할 수 있어요.' : applying ? '새 버전을 내려받고 적용하고 있어요.' : updateError || info?.message || pluginUpdateLabels[updateStatus]}</p></div>
             {(canUpdate || applying) ? <Button label={updateError ? '업데이트 다시 시도' : '업데이트'} variant="primary" size="lg" icon={<Download size={17} />} isDisabled={busy || !systemEnabled || updateStatus === 'checking'} isLoading={applying} onClick={() => void applyUpdate(plugin)} /> : (updateStatus === 'error' || updateError) && <Button label="다시 확인" size="lg" icon={<RefreshCw size={17} />} isDisabled={busy || !systemEnabled || updateCheckBusy} isLoading={updateCheckBusy} onClick={() => void checkUpdates()} />}
           </div>
-          <div className="installed-plugin-actions"><div className="plugin-permission-summary"><span className="feature-caption">{plugin.permissions.map((permission) => permissionCopy[permission].name).join(' · ') || '추가 권한 없음'}</span><Button label="제작자·권한 확인" size="lg" icon={<Info size={16} />} isDisabled={busy} onClick={() => setDialog({ kind: 'plugin', id: plugin.id, contentHash: plugin.contentHash, action: 'details' })} /></div>{removeId === plugin.id ? <div className="feature-inline-actions"><span>이 플러그인을 삭제할까요?</span><Button label="삭제" className="feature-danger-button" size="lg" isDisabled={busy} isLoading={pending === `remove:${plugin.id}`} onClick={() => void run(`remove:${plugin.id}`, async (commit) => { const next = await api.removePlugin(plugin.id); if (mounted.current) { commit(next); setRemoveId(''); } })} /><Button label="취소" size="lg" isDisabled={busy} onClick={() => setRemoveId('')} /></div> : <div className="feature-inline-actions"><Button label="열기" size="lg" isDisabled={busy || !pluginCanRun(state, plugin)} onClick={() => setSelectedId(plugin.id)} /><Button label="삭제" size="lg" icon={<Trash2 size={16} />} isDisabled={busy} onClick={() => setRemoveId(plugin.id)} /></div>}</div>
+          <div className="installed-plugin-actions"><div className="plugin-permission-summary"><span className="feature-caption">{plugin.permissions.map((permission) => permissionCopy[permission].name).join(' · ') || '추가 권한 없음'}</span><Button label="제작자·권한 확인" size="lg" icon={<Info size={16} />} isDisabled={busy} onClick={() => setDialog({ kind: 'plugin', id: plugin.id, contentHash: plugin.contentHash, action: 'details' })} /></div>{removeId === plugin.id ? <div className="feature-inline-actions"><span>이 플러그인을 삭제할까요?</span><Button label="삭제" className="feature-danger-button" size="lg" isDisabled={busy} isLoading={pending === `remove:${plugin.id}`} onClick={() => void run(`remove:${plugin.id}`, async (commit) => { const next = await api.removePlugin(plugin.id); if (mounted.current) { commit(next); setRemoveId(''); } })} /><Button label="취소" size="lg" isDisabled={busy} onClick={() => setRemoveId('')} /></div> : <div className="feature-inline-actions">{plugin.apiVersion === 2 && plugin.kind === 'theme' && onThemeSettings && <Button label="테마 설정" size="lg" isDisabled={busy || !pluginCanRun(state, plugin)} onClick={onThemeSettings} />}{plugin.entry && <Button label={plugin.apiVersion === 2 && plugin.kind === 'theme' ? '설정 화면 열기' : '열기'} size="lg" isDisabled={busy || !pluginCanRun(state, plugin)} onClick={() => setSelectedId(plugin.id)} />}<Button label="삭제" size="lg" icon={<Trash2 size={16} />} isDisabled={busy} onClick={() => setRemoveId(plugin.id)} /></div>}</div>
         </Card>;
       })}</div>}
     </section>
@@ -237,7 +246,7 @@ export function PluginsPanel({ api, appearance }: { api: KitviApi; appearance: A
   </>;
 }
 
-const bridgeMethods = new Set(['storage.get', 'storage.set', 'downloads.chooseFolder', 'downloads.openFolder', 'media.status', 'media.installEngine', 'media.analyze', 'media.start', 'media.cancel']);
+const bridgeMethods = new Set(['storage.get', 'storage.set', 'downloads.chooseFolder', 'downloads.openFolder', 'media.status', 'media.installEngine', 'media.analyze', 'media.start', 'media.cancel', 'theme.getState', 'playback.getState', 'playback.pause', 'playback.setVolume', 'playback.requestTrack']);
 function PluginFrame({ api, appearance, plugin, runtimeState }: { api: KitviApi; appearance: Appearance; plugin: InstalledPlugin; runtimeState: React.RefObject<PluginState | null> }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const latestAppearance = useRef(appearance);
@@ -298,7 +307,7 @@ function PluginFrame({ api, appearance, plugin, runtimeState }: { api: KitviApi;
     void refreshMedia();
     return () => { active = false; sendState.current = () => {}; window.clearTimeout(handshakeTimeout); window.removeEventListener('message', receive); unsubscribe(); };
   }, [api, plugin.id, plugin.name, plugin.version, plugin.contentHash, runtimeState]);
-  const entry = plugin.entry.split('/').map(encodeURIComponent).join('/');
+  const entry = (plugin.entry || '').split('/').map(encodeURIComponent).join('/');
   const loaded = () => {
     if (++loadCount.current > 1) {
       // A WindowProxy survives navigation, including CSP error documents. Revoke

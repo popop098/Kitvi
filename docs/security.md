@@ -8,6 +8,8 @@ Kitvi는 코드 서명이 없는 Preview입니다. 앱 업데이트와 GitHub �
 
 ## 플러그인 실행 경계
 
+0.7.0의 SDK2 테마는 검증한 JSON과 패키지 자산을 호스트가 해석합니다. `theme`과 `playback` 권한은 별도이며 기존 SDK1 도구의 실행 경계는 유지합니다. YouTube 플레이어는 호스트가 소유한 별도 임시 세션에서 공식 임베드만 사용하고 일반 플러그인에는 네트워크나 부모 DOM 접근을 제공하지 않습니다. 기능 끄기·테마 해제·종료는 재생을 정리합니다. 패키지 오디오와 YouTube의 가시성/백그라운드 동작은 [테마 가이드](theme-sdk.md)에 구분했습니다.
+
 - SDK 1 UI는 sandbox iframe의 정적 HTML/CSS/JavaScript입니다. 직접 Node, Electron IPC, 파일 시스템, shell, 네이티브 모듈·실행 파일 플러그인을 제공하지 않습니다.
 - 호스트는 설치·활성 상태, 선언 권한, 호출 프레임과 요청 인수를 확인합니다. 저장소·선택 폴더·미디어 작업은 플러그인별로 구분합니다.
 - 패키지 경로·파일 형식·크기를 검사하며 GitHub 패키지는 릴리스의 체크섬과 대조합니다. 설치한 리소스에도 무결성 검사를 적용합니다.
@@ -26,6 +28,8 @@ Kitvi는 코드 서명이 없는 Preview입니다. 앱 업데이트와 GitHub �
 일반 사용 오류나 개선 제안은 공개 이슈로 보내 주세요. 제보 접수·수정·공개 일정은 확인 후 조율하며, 이 문서는 특정 응답 시간이나 수정 완료를 약속하지 않습니다.
 
 ## English
+
+SDK2 themes in0.7 use host-validated JSON and packaged assets, with separate theme/playback capabilities. SDK1 tool isolation remains. The official YouTube player uses a host-owned temporary session; plugins receive no general network or parent-DOM API. Disabling/revoking a theme stops its playback. See [theme SDK](theme-sdk.md) for the different visibility/background behavior of packaged audio and YouTube.
 
 Kitvi is an unsigned Preview. App updates and GitHub plugin installation use TLS and SHA256, without publisher code-signature verification. Checksums establish consistency with a supplied hash, not publisher identity or safety. Published source allows inspection; it does not guarantee freedom from vulnerabilities or a reproducible match to distributed binaries.
 

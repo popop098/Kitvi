@@ -60,8 +60,11 @@ test('preview never installs; confirmation persists and identical packages are i
   assert.equal(f.manager.state.plugins.length, 1); assert.equal(f.manager.get(installed.id).installedAt, installed.installedAt);
   await activate(f.manager);
   const page = await f.manager.readResource(installed.id, 'ui/index.html'); assert.match(page.data.toString(), /Plugin/); assert.match(page.mime, /^text\/html/);
+  // The 0.6 registry did not yet bind receipts to an explicit SDK contract.
+  const registryPath = path.join(f.directory, 'plugins', 'registry.json'), registry = JSON.parse(await readFile(registryPath, 'utf8'));
+  delete registry.consents[installed.id].apiVersion; delete registry.consents[installed.id].kind; await writeFile(registryPath, JSON.stringify(registry));
   const restored = new PluginManager({ directory: f.directory, appVersion: '0.4.0', log: () => {} });
-  assert.equal(restored.get(installed.id).contentHash, installed.contentHash); await restored.dispose();
+  assert.equal(restored.get(installed.id).contentHash, installed.contentHash); assert.equal(restored.canRun(installed.id), true); await restored.dispose();
 });
 
 test('changed same-version packages and downgrades cannot replace an installed plugin', async (t) => {

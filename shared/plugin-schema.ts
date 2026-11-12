@@ -1,8 +1,8 @@
 import semver from 'semver';
 import type { PluginManifest, PluginPermission } from './features.ts';
 
-const manifestKeys = new Set(['apiVersion', 'id', 'name', 'version', 'minKitviVersion', 'description', 'author', 'authorEmail', 'entry', 'permissions']);
-const permissions = new Set<PluginPermission>(['storage', 'downloads', 'media']);
+const manifestKeys = new Set(['apiVersion', 'id', 'name', 'version', 'minKitviVersion', 'description', 'author', 'authorEmail', 'entry', 'permissions', 'kind', 'theme']);
+const permissions = new Set<PluginPermission>(['storage', 'downloads', 'media', 'theme', 'playback']);
 const reserved = /^(?:con|prn|aux|nul|conin\$|conout\$|clock\$|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i;
 const pluginId = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*)+$/;
 
@@ -27,15 +27,23 @@ function text(value: unknown, name: string, max: number): string {
 export function validatePluginManifest(value: unknown, appVersion: string): PluginManifest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('kitvi-plugin.json must contain an object.');
   const raw = value as Record<string, unknown>;
-  if (Object.keys(raw).some((key) => !manifestKeys.has(key))) throw new Error('Unknown plugin manifest field; SDK 1 supports static web plugins only.');
-  if (raw.apiVersion !== 1) throw new Error('This plugin requires an unsupported SDK API version.');
+  if (Object.keys(raw).some((key) => !manifestKeys.has(key))) throw new Error('Unknown plugin manifest field.');
+  if (raw.apiVersion !== 1 && raw.apiVersion !== 2) throw new Error('This plugin requires an unsupported SDK API version.');
+  if (raw.apiVersion === 1 && (Object.hasOwn(raw, 'kind') || Object.hasOwn(raw, 'theme'))) throw new Error('SDK 1 supports static web plugins only.');
+  if (raw.apiVersion === 2 && raw.kind !== 'theme') throw new Error('SDK 2 requires the theme plugin kind.');
   const version = text(raw.version, 'version', 64), minKitviVersion = text(raw.minKitviVersion, 'minimum Kitvi version', 64);
   if (semver.valid(version) !== version || semver.valid(minKitviVersion) !== minKitviVersion) throw new Error('Plugin versions must be full semantic versions (for example 1.0.0).');
   if (!semver.valid(appVersion) || semver.lt(appVersion, minKitviVersion)) throw new Error(`This plugin requires Kitvi ${minKitviVersion} or later.`);
-  const entry = validateArchivePath(raw.entry);
-  if (!entry.endsWith('.html')) throw new Error('Plugin entry must be a local .html file.');
-  if (!Array.isArray(raw.permissions) || raw.permissions.length > 3 || raw.permissions.some((item) => !permissions.has(item)) || new Set(raw.permissions).size !== raw.permissions.length) throw new Error('Unsupported or duplicate plugin permissions.');
+  if (raw.apiVersion === 2 && semver.lt(minKitviVersion, '0.7.0')) throw new Error('SDK 2 themes require minKitviVersion 0.7.0 or later.');
+  const entry = raw.entry !== undefined || raw.apiVersion === 1 ? validateArchivePath(raw.entry) : undefined;
+  if (entry !== undefined && !entry.endsWith('.html')) throw new Error('Plugin entry must be a local .html file.');
+  if (!Array.isArray(raw.permissions) || raw.permissions.length > (raw.apiVersion === 1 ? 3 : 5) || raw.permissions.some((item) => !permissions.has(item) || (raw.apiVersion === 1 && ['theme', 'playback'].includes(item))) || new Set(raw.permissions).size !== raw.permissions.length) throw new Error('Unsupported or duplicate plugin permissions.');
+  if (raw.apiVersion === 2 && !raw.permissions.includes('theme')) throw new Error('Theme packages must declare the theme permission.');
   if (Object.hasOwn(raw, 'authorEmail') && (typeof raw.authorEmail !== 'string' || raw.authorEmail.length > 254 || /[\p{Cc}\s]/u.test(raw.authorEmail) || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw.authorEmail))) throw new Error('Invalid plugin author email.');
   if (Object.hasOwn(raw, 'authorEmail') && semver.lt(minKitviVersion, '0.6.0')) throw new Error('Plugin author email requires minKitviVersion 0.6.0 or later.');
-  return { apiVersion: 1, id: validatePluginId(raw.id), name: text(raw.name, 'name', 80), version, minKitviVersion, description: text(raw.description, 'description', 1000), author: text(raw.author, 'author', 120), ...(typeof raw.authorEmail === 'string' ? { authorEmail: raw.authorEmail } : {}), entry, permissions: [...raw.permissions] };
+  const base = { id: validatePluginId(raw.id), name: text(raw.name, 'name', 80), version, minKitviVersion, description: text(raw.description, 'description', 1000), author: text(raw.author, 'author', 120), ...(typeof raw.authorEmail === 'string' ? { authorEmail: raw.authorEmail } : {}), permissions: [...raw.permissions] as PluginPermission[] };
+  if (raw.apiVersion === 1) return { ...base, apiVersion: 1, entry: entry! };
+  const theme = validateArchivePath(raw.theme);
+  if (!theme.endsWith('.json')) throw new Error('Theme definition must be a local .json file.');
+  return { ...base, apiVersion: 2, kind: 'theme', theme, ...(entry ? { entry } : {}) };
 }

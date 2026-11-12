@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./types",
+    "rootDir": "../shared",
+    "types": [],
+    "lib": ["ES2022"]
+  },
+  "include": ["../shared/themes.ts", "../shared/playback.ts"]
+}

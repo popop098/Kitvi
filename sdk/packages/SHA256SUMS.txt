@@ -1,0 +1,2 @@
+84cd101ea7bacebdfe5c1c6d8462d737dffce07046e8bf2014f1e47955e54f37  Cozy-Desk-1.0.0.kitvi-plugin.zip
+1e8e0ee113707a03488b715447aa3a9538194619873a9af1b8ee7b9ba7143c83  Midnight-Grid-1.0.0.kitvi-plugin.zip

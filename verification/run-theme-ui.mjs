@@ -1,0 +1,14 @@
+import { build } from 'esbuild';
+import { copyFile, mkdir, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { join, resolve } from 'node:path';
+import { runVerification } from './process.mjs';
+const root = resolve(import.meta.dirname, '..'), output = join(root, '.cache/theme-ui');
+await mkdir(output, {recursive:true}); await mkdir(join(root, 'verification/artifacts'), {recursive:true});
+await copyFile(join(root,'assets/kitvi-icon.png'),join(output,'kitvi-icon.png'));
+await build({entryPoints:[join(root, 'verification/theme-ui.tsx')],outfile:join(output, 'fixture.js'),bundle:true,format:'iife',platform:'browser',loader:{'.woff2':'dataurl','.woff':'dataurl'}});
+await writeFile(join(output, 'index.html'), '<!doctype html><html data-appearance="light"><head><meta charset="utf-8"><link rel="stylesheet" href="fixture.css"></head><body><main id="root"></main><script src="fixture.js"></script></body></html>');
+const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
+const result = await runVerification({executable:process.env.KITVI_ELECTRON_BINARY || createRequire(import.meta.url)('electron'),args:[join(root, 'verification/theme-ui.cjs')],env,logPath:join(output,'run.log'),timeoutMs:60000});
+if (result.timedOut || result.code !== 0) throw Error('Theme UI verification failed; see verification/artifacts/theme-ui.json and '+join(output,'run.log'));
+console.log('Theme UI verification passed.');

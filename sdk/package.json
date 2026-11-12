@@ -1,0 +1,11 @@
+{
+  "name": "@kitvi/plugin-sdk",
+  "version": "0.7.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Browser bridge and types for Kitvi tool and theme plugins",
+  "main": "kitvi-sdk.js",
+  "types": "kitvi-sdk.d.ts",
+  "files": ["kitvi-sdk.js", "kitvi-sdk.d.ts", "types"],
+  "scripts": {"build:types":"node ../scripts/sdk-types.mjs"}
+}

@@ -3,12 +3,15 @@ export interface UpdateState {
   phase: UpdatePhase; currentVersion: string; availableVersion: string | null; autoCheck: boolean;
   checkedAt: string | null; progress: number | null; message: string | null; canInstall: boolean; releaseUrl: string;
 }
-export type PluginPermission = 'storage' | 'downloads' | 'media';
-export interface PluginManifest {
-  apiVersion: 1; id: string; name: string; version: string; minKitviVersion: string;
-  description: string; author: string; authorEmail?: string; entry: string; permissions: PluginPermission[];
+import type { ThemeState } from './themes.ts';
+import type { PlaybackState, PlaybackViewport, LocalPlaybackReport } from './playback.ts';
+export type PluginPermission = 'storage' | 'downloads' | 'media' | 'theme' | 'playback';
+interface PluginManifestBase {
+  id: string; name: string; version: string; minKitviVersion: string;
+  description: string; author: string; authorEmail?: string; permissions: PluginPermission[];
 }
-export interface InstalledPlugin extends PluginManifest { enabled: boolean; source: string; installedAt: string; contentHash: string; needsConsent: boolean }
+export type PluginManifest = PluginManifestBase & ({ apiVersion: 1; entry: string; kind?: never; theme?: never } | { apiVersion: 2; kind: 'theme'; theme: string; entry?: string });
+export type InstalledPlugin = PluginManifest & { enabled: boolean; source: string; installedAt: string; contentHash: string; needsConsent: boolean };
 export interface PluginPreview { token: string; manifest: PluginManifest; source: string; permissions: PluginPermission[] }
 export interface PluginState { system: { enabled: boolean; acceptedAt: string | null }; plugins: InstalledPlugin[]; busy: boolean; message: string | null }
 export type PluginUpdateStatus = 'idle' | 'checking' | 'current' | 'available' | 'unsupported' | 'error';
@@ -31,6 +34,20 @@ export interface MediaState {
   jobs: MediaJob[]; folder: string | null;
 }
 export interface FeatureApi {
+  getPlaybackState(): Promise<PlaybackState>;
+  playThemeTrack(trackId: string): Promise<PlaybackState>;
+  pauseThemePlayback(): Promise<PlaybackState>;
+  setThemePlaybackVolume(volume: number): Promise<PlaybackState>;
+  setThemePlaybackLoop(loop: boolean): Promise<PlaybackState>;
+  setYouTubeSource(url: string): Promise<PlaybackState>;
+  setPlaybackViewport(viewport: PlaybackViewport): Promise<void>;
+  reportLocalPlayback(report: LocalPlaybackReport): Promise<PlaybackState>;
+  onPlayback(listener: (state: PlaybackState) => void): () => void;
+  getThemeState(): Promise<ThemeState>;
+  previewTheme(id: string | null): Promise<ThemeState>;
+  applyTheme(id: string | null): Promise<ThemeState>;
+  cancelThemePreview(): Promise<ThemeState>;
+  onTheme(listener: (state: ThemeState) => void): () => void;
   getUpdateState(): Promise<UpdateState>;
   checkUpdates(): Promise<UpdateState>;
   setAutoCheck(value: boolean): Promise<UpdateState>;

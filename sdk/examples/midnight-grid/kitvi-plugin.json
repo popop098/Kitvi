@@ -1,0 +1,12 @@
+{
+  "apiVersion": 2,
+  "kind": "theme",
+  "id": "kitvi.theme.midnight-grid",
+  "name": "Midnight Grid",
+  "version": "1.0.0",
+  "minKitviVersion": "0.7.0",
+  "description": "푸른 회색 표면과 세 열 배치, 화면에 표시되는 YouTube 플레이어 예제",
+  "author": "Kitvi Examples",
+  "theme": "theme.json",
+  "permissions": ["theme", "playback"]
+}

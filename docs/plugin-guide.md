@@ -1,4 +1,6 @@
-# 플러그인 제작 가이드 · SDK 1
+# 도구 플러그인 제작 가이드 · SDK 1
+
+커스텀 테마는 [SDK2 테마·BGM 가이드](theme-sdk.md)를 참고하세요. SDK1 도구는 0.7.0에서도 계속 지원합니다.
 
 Kitvi 0.6.0은 기존 **`apiVersion: 1`** 정적 웹 플러그인 계약을 유지합니다. 이 문서는 0.6.0의 제작자 연락처와 사용자 동의 안내를 설명합니다. 실행 가능한 예제·SDK bridge·전체 API 예시는 [kitvi-YT-downloader](https://github.com/popop098/kitvi-YT-downloader)와 그 [제작 가이드](https://github.com/popop098/kitvi-YT-downloader/blob/main/PLUGIN_GUIDE.md)에 있습니다. 호스트가 검사하는 실제 계약은 [`shared/plugin-schema.ts`](../shared/plugin-schema.ts)와 [`shared/features.ts`](../shared/features.ts)를 참고하세요.
 

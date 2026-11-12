@@ -5,6 +5,10 @@ const listen = <T>(channel: string, callback: (value: T) => void) => {
   ipcRenderer.on(channel, listener); return () => { ipcRenderer.removeListener(channel, listener); };
 };
 const api: KitviApi = {
+  getThemeState: () => ipcRenderer.invoke('theme:get'), previewTheme: (id) => ipcRenderer.invoke('theme:preview', id), applyTheme: (id) => ipcRenderer.invoke('theme:apply', id), cancelThemePreview: () => ipcRenderer.invoke('theme:cancel'), onTheme: (callback) => listen('theme:changed', callback),
+  getPlaybackState: () => ipcRenderer.invoke('playback:get'), playThemeTrack: (id) => ipcRenderer.invoke('playback:play', id), pauseThemePlayback: () => ipcRenderer.invoke('playback:pause'),
+  setThemePlaybackVolume: (value) => ipcRenderer.invoke('playback:volume', value), setThemePlaybackLoop: (value) => ipcRenderer.invoke('playback:loop', value), setYouTubeSource: (url) => ipcRenderer.invoke('playback:youtube', url),
+  setPlaybackViewport: (viewport) => ipcRenderer.invoke('playback:viewport', viewport), reportLocalPlayback: (report) => ipcRenderer.invoke('playback:local', report), onPlayback: (callback) => listen('playback:changed', callback),
   getState: () => ipcRenderer.invoke('system:get'), refresh: () => ipcRenderer.invoke('system:refresh'), retryCollector: () => ipcRenderer.invoke('system:retry'),
   onState: (callback) => listen('system:changed', callback),
   getAppearance: () => ipcRenderer.invoke('appearance:get'), setAppearance: (value) => ipcRenderer.invoke('appearance:set', value),

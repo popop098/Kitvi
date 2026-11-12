@@ -3,7 +3,7 @@
 <p align="center">Your PC at a glance. More tools through plugins.</p>
 <p align="center"><a href="README.md">한국어</a> · <strong>English</strong><br><a href="https://github.com/popop098/Kitvi/releases">Downloads / releases</a> · <a href="docs/plugin-guide.md">Plugin authoring</a> · <a href="https://github.com/popop098/Kitvi/issues/new">Report an issue</a></p>
 
-Kitvi is a Windows PC dashboard for CPU, memory and GPU usage, hardware, Windows uptime, storage, monitors and devices. The application UI is currently Korean. **0.6.0 Preview** keeps community plugins off by default and adds a first-use warning plus separate review of each plugin's author, contact, source and permissions.
+Kitvi is a Windows PC dashboard for CPU, memory and GPU usage, hardware, Windows uptime, storage, monitors and devices. The application UI is currently Korean. **0.7.0 Preview** adds custom themes and BGM widgets while keeping first-use and per-plugin author/contact/source/permission consent.
 
 This repository publishes Kitvi's source, build instructions, releases and issues. Kitvi-authored source code is [MIT-licensed](LICENSE). Branding and third-party components have separate terms described in [BRANDING.md](BRANDING.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
@@ -26,6 +26,12 @@ Windows 11 x64 has been used for primary validation. Windows 10 22H2 x64 is a co
 - GPU selection and explicit `—` values when metrics are unavailable. GPU usage uses the busiest engine of that adapter. Device status comes from Windows and does not infer Bluetooth connectivity.
 - Pretendard, light/dark appearance and custom frameless window controls.
 - Explicit app update download and restart installation, plugin installation from GitHub Releases or local ZIP, and plugin enable/disable/removal.
+
+## Custom themes and BGM
+
+SDK2 themes customize light/dark colors, packaged backgrounds/fonts, dashboard card order/visibility/columns and BGM. SDK1 tools remain supported. Install and accept a theme, then preview/apply/cancel/reset in Settings. The header always retains a default-theme recovery action.
+
+Try [Cozy Desk](sdk/packages/Cozy-Desk-1.0.0.kitvi-plugin.zip) for local audio or [Midnight Grid](sdk/packages/Midnight-Grid-1.0.0.kitvi-plugin.zip) for an official YouTube player. [Authoring guide](docs/theme-sdk.md) includes the schema, reusable SDK types and packaging commands. Audio never starts on theme activation or restart. Packaged audio may play in the background; YouTube requires its visible official player and pauses when hidden, clipped or minimized. Disabling the theme/plugin system stops playback and restores defaults.
 
 ## Plugins
 
