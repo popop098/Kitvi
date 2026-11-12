@@ -1,10 +1,10 @@
 <p align="center"><img src="assets/kitvi-mascot.png" width="200" alt="Kitvi SD 여우 마스코트"></p>
 <h1 align="center">Kitvi · 킷비</h1>
 <p align="center">내 PC의 지금을, 한눈에. 필요한 기능은 플러그인으로.</p>
-<p align="center"><img src="https://img.shields.io/badge/Windows-x64-0078D4?style=flat-square" alt="Windows x64"> <img src="https://img.shields.io/badge/v0.4.0-Preview-E8A44C?style=flat-square" alt="0.4.0 Preview"></p>
-<p align="center"><strong>한국어</strong> · <a href="README.en.md">English</a><br><a href="https://github.com/popop098/Kitvi/releases/download/v0.4.0/Kitvi-Setup-0.4.0-x64.exe">Windows 설치 파일</a> · <a href="https://github.com/popop098/Kitvi/releases/tag/v0.4.0">릴리스·포터블 ZIP</a> · <a href="https://github.com/popop098/Kitvi/issues/new">문제 제보</a></p>
+<p align="center"><img src="https://img.shields.io/badge/Windows-x64-0078D4?style=flat-square" alt="Windows x64"> <img src="https://img.shields.io/badge/v0.5.0-Preview-E8A44C?style=flat-square" alt="0.5.0 Preview"></p>
+<p align="center"><strong>한국어</strong> · <a href="README.en.md">English</a><br><a href="https://github.com/popop098/Kitvi/releases/download/v0.5.0/Kitvi-Setup-0.5.0-x64.exe">Windows 설치 파일</a> · <a href="https://github.com/popop098/Kitvi/releases/tag/v0.5.0">릴리스·포터블 ZIP</a> · <a href="https://github.com/popop098/Kitvi/issues/new">문제 제보</a></p>
 
-Kitvi는 CPU·메모리·GPU와 Windows, 저장공간, 모니터, 장치를 확인하는 Windows용 PC 대시보드입니다. **0.4.0 Preview**부터 GitHub Releases 업데이트와 커뮤니티 플러그인을 지원합니다.
+Kitvi는 CPU·메모리·GPU와 Windows, 저장공간, 모니터, 장치를 확인하는 Windows용 PC 대시보드입니다. **0.5.0 Preview**에서는 설치한 플러그인의 새 버전을 자동 확인하고 목록에서 업데이트할 수 있습니다.
 
 앱 소스는 비공개이며, 이 저장소는 배포 파일·사용 안내·이슈를 관리합니다. [YT Downloader 예제와 플러그인 제작 가이드](https://github.com/popop098/kitvi-YT-downloader)는 별도 공개 저장소에서 제공합니다.
 
@@ -12,18 +12,20 @@ Kitvi는 CPU·메모리·GPU와 Windows, 저장공간, 모니터, 장치를 확�
 
 ## 시작하기
 
-1. [Kitvi-Setup-0.4.0-x64.exe](https://github.com/popop098/Kitvi/releases/download/v0.4.0/Kitvi-Setup-0.4.0-x64.exe)를 다운로드해 설치합니다.
+1. [Kitvi-Setup-0.5.0-x64.exe](https://github.com/popop098/Kitvi/releases/download/v0.5.0/Kitvi-Setup-0.5.0-x64.exe)를 다운로드해 설치합니다.
 2. Kitvi를 실행합니다. Node.js·.NET·WebView2를 따로 설치할 필요가 없습니다.
 3. PC 상태는 오프라인에서도 확인합니다. 설정에서 업데이트 확인 방식을 선택할 수 있습니다.
 
-**기존 0.3.0은 이번 설치 파일을 한 번 직접 설치해야 합니다.** [포터블 ZIP](https://github.com/popop098/Kitvi/releases/download/v0.4.0/Kitvi-0.4.0-win-x64.zip)은 전체를 새 폴더에 풀어 실행하세요. ZIP은 버전 확인만 지원하며 앱 안에서 새 버전을 설치하지 않습니다.
+**기존 0.3.0은 이번 설치 파일을 한 번 직접 설치해야 합니다.** [포터블 ZIP](https://github.com/popop098/Kitvi/releases/download/v0.5.0/Kitvi-0.5.0-win-x64.zip)은 전체를 새 폴더에 풀어 실행하세요. ZIP은 버전 확인만 지원하며 앱 안에서 새 버전을 설치하지 않습니다.
 
 | 환경 | 확인 범위 |
 | --- | --- |
 | Windows 11 x64 | 실행 및 주요 기능 검증 |
 | Windows 10 22H2 x64 | 호환성 대상, 별도 실기 검증 전 |
 
-현재 코드 서명이 없는 Preview입니다. 공식 릴리스의 [SHA256SUMS.txt](https://github.com/popop098/Kitvi/releases/download/v0.4.0/SHA256SUMS.txt)로 파일을 대조할 수 있습니다. 업데이트는 TLS·체크섬을 사용하며 게시자 코드 서명 검증은 제공하지 않습니다.
+현재 코드 서명이 없는 Preview입니다. 공식 릴리스의 [SHA256SUMS.txt](https://github.com/popop098/Kitvi/releases/download/v0.5.0/SHA256SUMS.txt)로 파일을 대조할 수 있습니다. 업데이트는 TLS·체크섬을 사용하며 게시자 코드 서명 검증은 제공하지 않습니다.
+
+0.4.0 설치형 사용자는 **설정 → 새 버전 확인 → 다운로드 → 다시 시작하여 설치**로 0.5.0을 적용할 수 있습니다. 기존 플러그인과 엔진은 유지됩니다.
 
 ## PC 상태
 
@@ -45,6 +47,8 @@ GPU가 여러 개면 선택할 수 있으며 누락된 값은 0%로 바꾸지 �
 ## 플러그인
 
 플러그인 화면에서 GitHub 저장소를 입력하거나 로컬 `.kitvi-plugin.zip`을 선택하세요. 가져오기만으로 설치하지 않으며 제작자·출처·권한을 확인한 뒤 설치합니다. 켜기·끄기·삭제도 이 화면에서 관리합니다.
+
+GitHub에서 설치한 플러그인은 앱 시작과 6시간 간격으로 새 버전을 확인합니다. 목록의 **업데이트 확인**으로 수동 확인할 수 있으며, 새 버전은 해당 항목의 **업데이트** 버튼으로 적용합니다. 확인 단계에서는 릴리스 정보만 조회합니다. 권한이 추가되면 확인 화면을 보여주며, 미디어 작업 중에는 교체를 막습니다. 기존 설정과 플러그인의 사용 여부는 유지합니다. 자동 확인은 설정에서 끌 수 있고, ZIP 설치는 새 ZIP을 선택해 갱신합니다.
 
 **첫 예제: [YT Downloader](https://github.com/popop098/kitvi-YT-downloader)** — 저장소 `popop098/kitvi-YT-downloader`를 가져와 설치하세요. 공식 yt-dlp 엔진 설치 후 공개 YouTube 영상 한 편을 단일 영상 파일 또는 원본 오디오로 저장합니다. 진행률과 취소를 지원합니다. 고화질 스트림 병합·MP3 변환·로그인·쿠키는 지원하지 않습니다.
 
