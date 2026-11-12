@@ -23,3 +23,5 @@ Astryx CLI is a development tool and is not bundled in the application renderer.
 이 문서는 외부 구성 요소의 고지이며, Kitvi 앱이나 브랜딩 자산에 오픈소스 라이선스 또는 별도 재배포 권한을 부여하지 않습니다. 앱 소스 코드는 비공개입니다.
 
 This document provides third-party notices. It does not grant an open-source license or separate redistribution rights to the Kitvi application or branding assets. The application source code is private.
+
+0.4.0: electron-updater / builder-util-runtime, yauzl, semver 및 런타임 의존성의 개별 MIT·ISC 고지는 배포 파일의 resources/licenses/npm에 포함됩니다. yt-dlp는 번들하지 않으며 별도 요청 시 공식 배포본을 다운로드합니다. 해당 바이너리의 upstream 라이선스가 별도로 적용됩니다. / Runtime dependency notices are included in resources/licenses/npm; yt-dlp is obtained separately on request under its upstream license. [yt-dlp license](https://github.com/yt-dlp/yt-dlp#license)
