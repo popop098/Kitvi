@@ -1,0 +1,17 @@
+@import '@astryxdesign/core/reset.css';
+@import '@astryxdesign/core/astryx.css';
+@import '@astryxdesign/theme-neutral/theme.css';
+@import 'pretendard/dist/web/variable/pretendardvariable.css';
+
+:root, [data-astryx-theme='neutral'] {
+  --font-family-body: 'Pretendard Variable', Pretendard, 'Segoe UI', sans-serif;
+  --font-family-heading: 'Pretendard Variable', Pretendard, 'Segoe UI', sans-serif;
+  --font-size-base: 1rem;
+  --font-size-sm: .875rem;
+  --font-size-xs: .875rem;
+  --font-size-lg: 1.125rem;
+  --color-text-secondary: light-dark(#57534e, #b5b0aa);
+  --kitvi-coral: light-dark(#d93350, #ff90a2);
+  font-family: var(--font-family-body);
+  font-synthesis: none;
+}

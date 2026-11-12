@@ -1,0 +1,30 @@
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { randomUUID } from 'node:crypto';
+import { join, resolve } from 'node:path';
+import assert from 'node:assert/strict';
+import { runVerification } from './process.mjs';
+const root = resolve(import.meta.dirname, '..');
+const profile = join(root, '.cache', 'plugin-host-' + randomUUID());
+await mkdir(profile, { recursive: true });
+await mkdir(join(root, 'verification/artifacts'), { recursive: true });
+const manifest = { apiVersion: 1, id: 'kitvi.consent-check', name: 'Host consent fixture', version: '1.0.0', minKitviVersion: '0.6.0', description: 'Local verification fixture', author: 'Fixture publisher', authorEmail: 'fixture@example.com', entry: 'ui/index.html', permissions: ['storage'] };
+const script = `let sequence=0;const pending=new Map();window.request=(method,params)=>new Promise((resolve,reject)=>{const requestId='fixture-'+(++sequence);pending.set(requestId,{resolve,reject});parent.postMessage({type:'kitvi:request',requestId,method,params},'*')});addEventListener('message',event=>{if(event.source!==parent||event.data?.type!=='kitvi:response')return;const request=pending.get(event.data.requestId);if(!request)return;pending.delete(event.data.requestId);event.data.ok?request.resolve(event.data.result):request.reject(Error(event.data.error))});parent.postMessage({type:'kitvi:hello'},'*');`;
+const files = [['kitvi-plugin.json', JSON.stringify(manifest)], ['ui/index.html', '<!doctype html><html><body><h1>Host consent fixture</h1><script src="fixture.js"></script></body></html>'], ['ui/fixture.js', script]];
+const local = [], central = []; let offset = 0;
+for (const [file, text] of files) {
+  const name = Buffer.from(file), data = Buffer.from(text); let crc = 0xffffffff;
+  for (const byte of data) { crc ^= byte; for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0); } crc = (crc ^ 0xffffffff) >>> 0;
+  const header = Buffer.alloc(30); header.writeUInt32LE(0x04034b50); header.writeUInt16LE(20, 4); header.writeUInt16LE(0x800, 6); header.writeUInt32LE(crc, 14); header.writeUInt32LE(data.length, 18); header.writeUInt32LE(data.length, 22); header.writeUInt16LE(name.length, 26);
+  local.push(header, name, data);
+  const entry = Buffer.alloc(46); entry.writeUInt32LE(0x02014b50); entry.writeUInt16LE(20, 4); entry.writeUInt16LE(20, 6); entry.writeUInt16LE(0x800, 8); entry.writeUInt32LE(crc, 16); entry.writeUInt32LE(data.length, 20); entry.writeUInt32LE(data.length, 24); entry.writeUInt16LE(name.length, 28); entry.writeUInt32LE(offset, 42);
+  central.push(entry, name); offset += header.length + name.length + data.length;
+}
+const directory = Buffer.concat(central), end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10); end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(offset, 16);
+await writeFile(join(profile, 'fixture.kitvi-plugin.zip'), Buffer.concat([...local, directory, end]));
+const env = { ...process.env, KITVI_VERIFICATION_RUNNER: '1', KITVI_TEST_DATA_DIR: profile }; delete env.ELECTRON_RUN_AS_NODE;
+const result = await runVerification({ executable: createRequire(import.meta.url)('electron'), args: [join(root, 'verification/plugin-host-harness')], env, logPath: join(profile, 'run.log'), timeoutMs: 60000 });
+assert.equal(result.code, 0, `Host fixture exited ${result.code}; log: ${join(profile, 'run.log')}`);
+const report = JSON.parse(await readFile(join(root, 'verification/artifacts/plugin-host.json'), 'utf8'));
+assert.equal(result.timedOut, false); assert.equal(report.result, 'PASS', JSON.stringify(report)); assert.equal(result.code, 0);
+console.log(JSON.stringify(report, null, 2));
